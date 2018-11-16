@@ -2,7 +2,7 @@
 
 A CSharp library that can deep clone any object using only reflection.
 
-No requirements for [Serializable] attributes, supports standard ignore attributes.
+No requirements for `[Serializable]` attributes, supports standard ignore attributes.
 
 ## Description
 
