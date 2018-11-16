@@ -15,7 +15,7 @@ var originalObject = new SomeComplexTypeWithDeepStructure();
 var myClonedObject = originalObject.Clone();
 ```
 
-### Capture Errors
+Capture Errors
 ```csharp
 var originalObject = new SomeComplexTypeWithDeepStructure();
 // capture errors found with your object where impossible situations occur, and add [IgnoreDataMember] to those properties/fields.
@@ -26,7 +26,7 @@ var myClonedObject = originalObject.Clone((ex, path, property, obj) => {
 });
 ```
 
-### Get differences between cloned objects using [AnyDiff](https://github.com/replaysMike/AnyDiff)
+Get differences between cloned objects using [AnyDiff](https://github.com/replaysMike/AnyDiff)
 ```csharp
 // using AnyDiff;
 var object1 = new MyComplexObject(1, "A string");
