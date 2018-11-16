@@ -8,6 +8,12 @@ No requirements for `[Serializable]` attributes, supports standard ignore attrib
 
 I built this library as almost all others I tried on complex objects either didn't work at all, or failed to account for common scenarios. Serialization required too much boiler plate (BinarySerialization, Protobuf, or Json.Net) and fails to account for various designs. Implementing IClonable was too much of a chore and should be unnecessary. Various projects that use expression trees also failed to work, IObservable patterns were difficult to implement on large, already written code base.
 
+## Installation
+Install AnyClone from the Package Manager Console:
+```
+PM> Install-Package AnyClone
+```
+
 ## Usage
 
 ```csharp
