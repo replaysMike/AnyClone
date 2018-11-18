@@ -55,3 +55,7 @@ Assert.AreEqual(diff.Count, 1);
 
 ### Ignoring Properties/Fields
 There are unfortunately a few situations that can't be resolved, such as cloning delegates, events etc. Fortunately, and for most scenarios you don't want these anyways so you can use any of the standard supported attributes to ignore these properties: `[IgnoreDataMember]`, `[JsonIgnore]`, and `[NonSerialized]` (fields only, just use `[IgnoreDataMember]` and save yourself the hassle).
+
+### Other Applications
+
+If you need to perform serialization instead of deep copying, try out [AnySerializer](https://github.com/replaysMike/AnySerializer) which doesn't require attribute decoration and works on complex structures.
