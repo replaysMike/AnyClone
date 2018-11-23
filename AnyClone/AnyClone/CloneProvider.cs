@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using TypeSupport;
 
 namespace AnyClone
 {
@@ -61,7 +62,7 @@ namespace AnyClone
             if (maxDepth > 0 && currentDepth >= maxDepth)
                 return null;
 
-            var typeSupport = new TypeSupport(sourceObject.GetType());
+            var typeSupport = new ExtendedType(sourceObject.GetType());
 
             // drop any objects we are ignoring by attribute
             if (typeSupport.Attributes.Any(x => _ignoreAttributes.Contains(x)))
@@ -152,7 +153,7 @@ namespace AnyClone
                     path = $"{rootPath}.{property.Name}";
                     if (property.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)))
                         continue;
-                    var propertyTypeSupport = new TypeSupport(property.PropertyType);
+                    var propertyTypeSupport = new ExtendedType(property.PropertyType);
                     var propertyValue = property.GetValue(sourceObject);
                     if (property.PropertyType.IsValueType)
                         SetPropertyValue(property, newObject, propertyValue, path);
@@ -173,7 +174,7 @@ namespace AnyClone
                     path = $"{rootPath}.{field.Name}";
                     if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)))
                         continue;
-                    var fieldTypeSupport = new TypeSupport(field.FieldType);
+                    var fieldTypeSupport = new ExtendedType(field.FieldType);
                     var fieldValue = field.GetValue(sourceObject);
                     if (field.FieldType.IsValueType)
                         SetFieldValue(field, newObject, fieldValue, path);
@@ -239,7 +240,7 @@ namespace AnyClone
         /// <returns></returns>
         private TValue CreateEmptyObject<TValue>()
         {
-            var typeSupport = new TypeSupport<TValue>();
+            var typeSupport = new ExtendedType<TValue>();
             if (typeSupport.HasEmptyConstructor)
                 return Activator.CreateInstance<TValue>();
             return (TValue)FormatterServices.GetUninitializedObject(typeSupport.Type);
@@ -253,7 +254,7 @@ namespace AnyClone
         /// <returns></returns>
         private object CreateEmptyObject(Type type, object sourceObject = null)
         {
-            var typeSupport = new TypeSupport(type);
+            var typeSupport = new ExtendedType(type);
             if (typeSupport.HasEmptyConstructor)
                 return Activator.CreateInstance(typeSupport.Type);
             else if (typeSupport.IsArray)
