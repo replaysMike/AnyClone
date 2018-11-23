@@ -79,12 +79,15 @@ namespace AnyClone
 
             // construct a hashtable of objects we have already inspected (simple recursion loop preventer)
             // we use this hashcode method as it does not use any custom hashcode handlers the object might implement
-            var hashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
-            if (objectTree.ContainsKey(hashCode))
-                return objectTree[hashCode];
+            if (sourceObject != null)
+            {
+                var hashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
+                if (objectTree.ContainsKey(hashCode))
+                    return objectTree[hashCode];
 
-            // ensure we can refer back to the reference for this object
-            objectTree.Add(hashCode, newObject);
+                // ensure we can refer back to the reference for this object
+                objectTree.Add(hashCode, newObject);
+            }
             try
             {
                 // clone a dictionary's key/values
