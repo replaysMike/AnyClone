@@ -2,6 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Michael Brown</Authors>
+    <Company>Refactor Software</Company>
+    <Description>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</Description>
+    <PackageProjectUrl>https://github.com/replaysMike/AnyClone</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/replaysMike/AnyClone</RepositoryUrl>
+    <PackageTags>deep-clone copy reflection refactor michael brown</PackageTags>
+    <PackageReleaseNotes>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
