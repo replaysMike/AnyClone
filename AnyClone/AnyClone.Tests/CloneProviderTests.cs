@@ -211,5 +211,17 @@ namespace AnyClone.Tests
 
             Assert.AreNotEqual(original, cloned);
         }
+
+        [Test]
+        public void Should_Clone_CustomCollectionObject()
+        {
+            var original = new CustomCollectionObject<BasicObject>(100, "test");
+            original.Add(new BasicObject() { IntValue = 1, BoolValue = true, ByteValue = 10, LongValue = 100, StringValue = "Test 1" });
+            original.Add(new BasicObject() { IntValue = 2, BoolValue = false, ByteValue = 20, LongValue = 200, StringValue = "Test 2" });
+            original.Add(new BasicObject() { IntValue = 3, BoolValue = true, ByteValue = 30, LongValue = 300, StringValue = "Test 3" });
+            var cloned = original.Clone();
+
+            Assert.AreEqual(original, cloned);
+        }
     }
 }

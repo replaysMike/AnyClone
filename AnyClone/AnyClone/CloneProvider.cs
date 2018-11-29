@@ -3,9 +3,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization;
 using TypeSupport;
+using TypeSupport.Extensions;
 
 namespace AnyClone
 {
@@ -17,6 +17,7 @@ namespace AnyClone
     {
         private const int DefaultMaxDepth = 1000;
         private readonly Type _type;
+        private readonly ObjectFactory _objectFactory;
         private readonly ICollection<Type> _ignoreAttributes = new List<Type> {
             typeof(IgnoreDataMemberAttribute),
             typeof(NonSerializedAttribute),
@@ -31,6 +32,7 @@ namespace AnyClone
         public CloneProvider()
         {
             _type = typeof(T);
+            _objectFactory = new ObjectFactory();
         }
 
         /// <summary>
@@ -72,8 +74,19 @@ namespace AnyClone
             if (typeSupport.IsDelegate)
                 return sourceObject;
 
+            object newObject = null;
             // create a new empty object of the desired type
-            var newObject = CreateEmptyObject(typeSupport.Type, sourceObject);
+            if (typeSupport.IsArray)
+            {
+                var length = 0;
+                if(typeSupport.IsArray)
+                    length = (sourceObject as Array).Length;
+                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, length: length);
+            }
+            else
+            {
+                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type);
+            }
 
             // increment the current recursion depth
             currentDepth++;
@@ -114,15 +127,13 @@ namespace AnyClone
                 if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
                 {
                     var genericType = typeSupport.Type.GetGenericArguments().First();
-
-                    var listType = typeof(List<>).MakeGenericType(genericType);
-                    var newList = (IList)Activator.CreateInstance(listType);
-                    newObject = newList;
+                    var genericExtendedType = new ExtendedType(genericType);
+                    var addMethod = typeSupport.Type.GetMethod("Add");
                     var enumerator = (IEnumerable)sourceObject;
                     foreach (var item in enumerator)
                     {
-                        var newItem = InspectAndCopy(item, currentDepth, maxDepth, objectTree, path);
-                        newList.Add(newItem);
+                        var element = InspectAndCopy(item, currentDepth, maxDepth, objectTree, path);
+                        addMethod.Invoke(newObject, new object[] { element });
                     }
                     return newObject;
                 }
@@ -138,52 +149,27 @@ namespace AnyClone
                         var element = sourceArray.GetValue(i);
                         var newElement = InspectAndCopy(element, currentDepth, maxDepth, objectTree, path);
                         newArray.SetValue(newElement, i);
-
                     }
                     return newArray;
                 }
 
-                var properties = GetProperties(sourceObject);
-                var fields = GetFields(sourceObject);
+                var fields = sourceObject.GetFields(FieldOptions.AllWritable);
 
-                // clone and recurse properties
                 var rootPath = path;
-                foreach (var property in properties)
-                {
-                    path = $"{rootPath}.{property.Name}";
-                    if (property.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)))
-                        continue;
-                    var propertyTypeSupport = new ExtendedType(property.PropertyType);
-                    var propertyValue = property.GetValue(sourceObject);
-                    if (property.PropertyType.IsValueType)
-                        SetPropertyValue(property, newObject, propertyValue, path);
-                    else if (propertyTypeSupport.IsImmutable)
-                    {
-                        SetPropertyValue(property, newObject, propertyValue, path);
-                    }
-                    else if (propertyValue != null)
-                    {
-                        var clonedPropertyValue = InspectAndCopy(propertyValue, currentDepth, maxDepth, objectTree, path);
-                        SetPropertyValue(property, newObject, clonedPropertyValue, path);
-                    }
-                }
-
                 // clone and recurse fields
                 foreach (var field in fields)
                 {
                     path = $"{rootPath}.{field.Name}";
                     if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)))
                         continue;
-                    var fieldTypeSupport = new ExtendedType(field.FieldType);
-                    var fieldValue = field.GetValue(sourceObject);
-                    if (field.FieldType.IsValueType)
-                        SetFieldValue(field, newObject, fieldValue, path);
-                    else if (fieldTypeSupport.IsImmutable)
-                        SetFieldValue(field, newObject, fieldValue, path);
-                    else if (fieldValue != null && !fieldTypeSupport.IsImmutable)
+                    var fieldTypeSupport = new ExtendedType(field.Type);
+                    var fieldValue = sourceObject.GetFieldValue(field);
+                    if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
+                        newObject.SetFieldValue(field, fieldValue);
+                    else if (fieldValue != null)
                     {
                         var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, objectTree, path);
-                        SetFieldValue(field, newObject, clonedFieldValue, path);
+                        newObject.SetFieldValue(field, clonedFieldValue);
                     }
                 }
 
@@ -193,112 +179,6 @@ namespace AnyClone
             {
 
             }
-        }
-
-        private void SetPropertyValue(PropertyInfo property, object obj, object valueToSet, string path)
-        {
-            try
-            {
-                if (property.SetMethod != null)
-                {
-                    property.SetValue(obj, valueToSet);
-                }
-                else
-                {
-                    // if this is an auto-property with a backing field, set it
-                    var field = obj.GetType().GetField($"<{property.Name}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
-                    if (field != null)
-                        field.SetValue(obj, valueToSet);
-                }
-            }
-            catch (Exception ex)
-            {
-                OnCloneError?.Invoke(ex, path, property, obj);
-                if (OnCloneError == null)
-                    throw ex;
-            }
-        }
-
-        private void SetFieldValue(FieldInfo field, object obj, object valueToSet, string path)
-        {
-            try
-            {
-                field.SetValue(obj, valueToSet);
-            }
-            catch (Exception ex)
-            {
-                OnCloneError?.Invoke(ex, path, field, obj);
-                if (OnCloneError == null)
-                    throw ex;
-            }
-        }
-
-        /// <summary>
-        /// Create a new, empty object of a given type
-        /// </summary>
-        /// <typeparam name="TValue"></typeparam>
-        /// <returns></returns>
-        private TValue CreateEmptyObject<TValue>()
-        {
-            var typeSupport = new ExtendedType<TValue>();
-            if (typeSupport.HasEmptyConstructor)
-                return Activator.CreateInstance<TValue>();
-            return (TValue)FormatterServices.GetUninitializedObject(typeSupport.Type);
-        }
-
-        /// <summary>
-        /// Create a new, empty object of a given type
-        /// </summary>
-        /// <param name="type">The type of object to construct</param>
-        /// <param name="sourceObject">For array types, the sourceObject is needed to determine length</param>
-        /// <returns></returns>
-        private object CreateEmptyObject(Type type, object sourceObject = null)
-        {
-            var typeSupport = new ExtendedType(type);
-            if (typeSupport.HasEmptyConstructor)
-                return Activator.CreateInstance(typeSupport.Type);
-            else if (typeSupport.IsArray)
-                return Activator.CreateInstance(typeSupport.Type, new object[] { ((Array)sourceObject)?.Length ?? 0 });
-            else if (typeSupport.IsImmutable)
-                return null;
-            return FormatterServices.GetUninitializedObject(typeSupport.Type);
-        }
-
-        /// <summary>
-        /// Get all of the properties of an object
-        /// </summary>
-        /// <param name="obj"></param>
-        /// <returns></returns>
-        private ICollection<PropertyInfo> GetProperties(object obj)
-        {
-            if (obj != null)
-            {
-                var t = obj.GetType();
-                return t.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            }
-            return new PropertyInfo[0];
-        }
-
-        /// <summary>
-        /// Get all of the fields of an object
-        /// </summary>
-        /// <param name="obj"></param>
-        /// <param name="includeAutoPropertyBackingFields">True to include the compiler generated backing fields for auto-property getters/setters</param>
-        /// <returns></returns>
-        private ICollection<FieldInfo> GetFields(object obj, bool includeAutoPropertyBackingFields = false)
-        {
-            if (obj != null)
-            {
-                var t = obj.GetType();
-                var allFields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (!includeAutoPropertyBackingFields)
-                {
-                    var allFieldsExcludingAutoPropertyFields = allFields.Where(x => !x.Name.Contains("k__BackingField")).ToList();
-                    return allFieldsExcludingAutoPropertyFields;
-                }
-                return allFields;
-            }
-            return new FieldInfo[0];
         }
     }
 }
