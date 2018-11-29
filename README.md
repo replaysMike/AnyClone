@@ -1,5 +1,6 @@
 # AnyClone
 [![nuget](https://img.shields.io/nuget/v/AnyClone.svg)](https://www.nuget.org/packages/AnyClone/)
+[![nuget](https://img.shields.io/nuget/dt/AnyClone.svg)](https://www.nuget.org/packages/AnyClone/)
 
 A CSharp library that can deep clone any object using only reflection.
 
