@@ -39,11 +39,12 @@ namespace AnyClone
         /// Clone any objects
         /// </summary>
         /// <param name="sourceObject">The object to clone</param>
+        /// <param name="options">The cloning options</param>
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
-        public T Clone(T sourceObject, int maxTreeDepth = DefaultMaxDepth)
+        public T Clone(T sourceObject, CloneOptions options = CloneOptions.None, int maxTreeDepth = DefaultMaxDepth)
         {
-            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, new Dictionary<int, object>(), string.Empty);
+            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty);
         }
 
         /// <summary>
@@ -52,10 +53,11 @@ namespace AnyClone
         /// <param name="sourceObject">The object to clone</param>
         /// <param name="currentDepth">The current tree depth</param>
         /// <param name="maxDepth">The max tree depth</param>
+        /// <param name="options">The cloning options</param>
         /// <param name="objectTree">The object tree to prevent cyclical references</param>
         /// <param name="path">The current path being traversed</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, IDictionary<int, object> objectTree, string path)
+        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path)
         {
             if (sourceObject == null)
                 return null;
@@ -67,7 +69,7 @@ namespace AnyClone
             var typeSupport = new ExtendedType(sourceObject.GetType());
 
             // drop any objects we are ignoring by attribute
-            if (typeSupport.Attributes.Any(x => _ignoreAttributes.Contains(x)))
+            if (typeSupport.Attributes.Any(x => _ignoreAttributes.Contains(x)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
                 return null;
 
             // for delegate types, copy them by reference rather than returning null
@@ -116,8 +118,8 @@ namespace AnyClone
                     var enumerator = (IDictionary)sourceObject;
                     foreach (DictionaryEntry item in enumerator)
                     {
-                        var key = InspectAndCopy(item.Key, currentDepth, maxDepth, objectTree, path);
-                        var value = InspectAndCopy(item.Value, currentDepth, maxDepth, objectTree, path);
+                        var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path);
+                        var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path);
                         newDictionary.Add(key, value);
                     }
                     return newObject;
@@ -132,7 +134,7 @@ namespace AnyClone
                     var enumerator = (IEnumerable)sourceObject;
                     foreach (var item in enumerator)
                     {
-                        var element = InspectAndCopy(item, currentDepth, maxDepth, objectTree, path);
+                        var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path);
                         addMethod.Invoke(newObject, new object[] { element });
                     }
                     return newObject;
@@ -147,7 +149,7 @@ namespace AnyClone
                     for (var i = 0; i < sourceArray.Length; i++)
                     {
                         var element = sourceArray.GetValue(i);
-                        var newElement = InspectAndCopy(element, currentDepth, maxDepth, objectTree, path);
+                        var newElement = InspectAndCopy(element, currentDepth, maxDepth, options, objectTree, path);
                         newArray.SetValue(newElement, i);
                     }
                     return newArray;
@@ -160,7 +162,11 @@ namespace AnyClone
                 foreach (var field in fields)
                 {
                     path = $"{rootPath}.{field.Name}";
-                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)))
+#if FEATURE_CUSTOM_ATTRIBUTES
+                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
+#else
+                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.Constructor.DeclaringType)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
+#endif
                         continue;
                     var fieldTypeSupport = new ExtendedType(field.Type);
                     var fieldValue = sourceObject.GetFieldValue(field);
@@ -168,7 +174,7 @@ namespace AnyClone
                         newObject.SetFieldValue(field, fieldValue);
                     else if (fieldValue != null)
                     {
-                        var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, objectTree, path);
+                        var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, path);
                         newObject.SetFieldValue(field, clonedFieldValue);
                     }
                 }
