@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Serialization;
 using TypeSupport;
@@ -81,21 +82,30 @@ namespace AnyClone
             if (typeSupport.IsArray)
             {
                 var length = 0;
-                if(typeSupport.IsArray)
+                if (typeSupport.IsArray)
                     length = (sourceObject as Array).Length;
                 newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, length: length);
+            }
+            else if(typeSupport.Type == typeof(string))
+            {
+                // copy the item directly
+                newObject = String.Copy((string)sourceObject);
+                return newObject;
             }
             else
             {
                 newObject = _objectFactory.CreateEmptyObject(typeSupport.Type);
             }
 
+            if (newObject == null)
+                return newObject;
+
             // increment the current recursion depth
             currentDepth++;
 
             // construct a hashtable of objects we have already inspected (simple recursion loop preventer)
             // we use this hashcode method as it does not use any custom hashcode handlers the object might implement
-            if (sourceObject != null)
+            if (sourceObject != null && !typeSupport.IsValueType)
             {
                 var hashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
                 if (objectTree.ContainsKey(hashCode))
@@ -159,23 +169,26 @@ namespace AnyClone
 
                 var rootPath = path;
                 // clone and recurse fields
-                foreach (var field in fields)
+                if (newObject != null)
                 {
-                    path = $"{rootPath}.{field.Name}";
-#if FEATURE_CUSTOM_ATTRIBUTES
-                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
-#else
-                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.Constructor.DeclaringType)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
-#endif
-                        continue;
-                    var fieldTypeSupport = new ExtendedType(field.Type);
-                    var fieldValue = sourceObject.GetFieldValue(field);
-                    if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
-                        newObject.SetFieldValue(field, fieldValue);
-                    else if (fieldValue != null)
+                    foreach (var field in fields)
                     {
-                        var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, path);
-                        newObject.SetFieldValue(field, clonedFieldValue);
+                        path = $"{rootPath}.{field.Name}";
+#if FEATURE_CUSTOM_ATTRIBUTES
+                        if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)) && !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
+#else
+                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.Constructor.DeclaringType)) && !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
+#endif
+                            continue;
+                        var fieldTypeSupport = new ExtendedType(field.Type);
+                        var fieldValue = sourceObject.GetFieldValue(field);
+                        if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
+                            newObject.SetFieldValue(field, fieldValue);
+                        else if (fieldValue != null)
+                        {
+                            var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, path);
+                            newObject.SetFieldValue(field, clonedFieldValue);
+                        }
                     }
                 }
 
@@ -186,5 +199,7 @@ namespace AnyClone
 
             }
         }
+
+
     }
 }
