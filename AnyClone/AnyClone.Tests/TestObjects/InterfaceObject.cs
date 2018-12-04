@@ -9,6 +9,10 @@ namespace AnyClone.Tests.TestObjects
         public int IntValue { get; set; }
         public IDictionary<int, BasicObject> DictionaryValue { get; set; } = new Dictionary<int, BasicObject>();
 
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
         public override bool Equals(object obj)
         {
             var basicObject = (InterfaceObject)obj;

@@ -9,6 +9,11 @@ namespace AnyClone.Tests.TestObjects
         public ICollection<int> IntCollection { get; set; }
         public ICollection<BasicObject> ObjectCollection { get; set; }
 
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
         public override bool Equals(object obj)
         {
             var basicObject = (CollectionObject)obj;

@@ -1,21 +1,16 @@
 ﻿using System;
+using System.Runtime.Serialization;
 
 namespace AnyClone.Tests.TestObjects
 {
-    public class BasicObject : IEquatable<BasicObject>
+    public class BasicObjectWithIgnore : IEquatable<BasicObjectWithIgnore>
     {
-        private int _privateIntValue;
         public bool BoolValue { get; set; }
         public byte ByteValue { get; set; }
         public int IntValue { get; set; }
         public long LongValue { get; set; }
+        [IgnoreDataMember]
         public string StringValue { get; set; }
-
-        public BasicObject() { }
-        public BasicObject(int privateIntValue)
-        {
-            _privateIntValue = privateIntValue;
-        }
 
         public override int GetHashCode()
         {
@@ -24,24 +19,21 @@ namespace AnyClone.Tests.TestObjects
 
         public override bool Equals(object obj)
         {
-            if (obj == null || obj.GetType() != typeof(BasicObject))
+            if (obj == null || obj.GetType() != typeof(BasicObjectWithIgnore))
                 return false;
-
-            var basicObject = (BasicObject)obj;
+            var basicObject = (BasicObjectWithIgnore)obj;
             return Equals(basicObject);
         }
 
-        public bool Equals(BasicObject other)
+        public bool Equals(BasicObjectWithIgnore other)
         {
             if (other == null)
                 return false;
-            return 
-                other._privateIntValue == _privateIntValue
-                && other.BoolValue == BoolValue
+            return other.BoolValue == BoolValue
                 && other.ByteValue == ByteValue
                 && other.IntValue == IntValue
                 && other.LongValue == LongValue
-                && other.StringValue == StringValue
+                // && other.StringValue == StringValue
                 ;
         }
     }

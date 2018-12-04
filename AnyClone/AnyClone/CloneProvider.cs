@@ -1,9 +1,9 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.Serialization;
 using TypeSupport;
 using TypeSupport.Extensions;
@@ -16,13 +16,13 @@ namespace AnyClone
     /// <typeparam name="T"></typeparam>
     public class CloneProvider<T>
     {
-        private const int DefaultMaxDepth = 1000;
+        public const int DefaultMaxDepth = 32;
         private readonly Type _type;
         private readonly ObjectFactory _objectFactory;
-        private readonly ICollection<Type> _ignoreAttributes = new List<Type> {
+        private readonly ICollection<object> _ignoreAttributes = new List<object> {
             typeof(IgnoreDataMemberAttribute),
             typeof(NonSerializedAttribute),
-            typeof(JsonIgnoreAttribute),
+            "JsonIgnoreAttribute",
         };
 
         public Action<Exception, string, object, object> OnCloneError { get; set; }
@@ -49,6 +49,30 @@ namespace AnyClone
         }
 
         /// <summary>
+        /// Clone any objects
+        /// </summary>
+        /// <param name="sourceObject">The object to clone</param>
+        /// <param name="options">The cloning options</param>
+        /// <param name="maxTreeDepth">The maximum tree depth</param>
+        /// <returns></returns>
+        public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth, params string[] ignorePropertiesOrPaths)
+        {
+            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty, ignorePropertiesOrPaths);
+        }
+
+        /// <summary>
+        /// Clone any objects
+        /// </summary>
+        /// <param name="sourceObject">The object to clone</param>
+        /// <param name="options">The cloning options</param>
+        /// <param name="maxTreeDepth">The maximum tree depth</param>
+        /// <returns></returns>
+        public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth, params Expression<Func<T, object>>[] ignoreProperties)
+        {
+            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty, ConvertToPropertyNameList(ignoreProperties));
+        }
+
+        /// <summary>
         /// (Recursive) Recursive function that inspects an object and its properties/fields and clones it
         /// </summary>
         /// <param name="sourceObject">The object to clone</param>
@@ -58,14 +82,20 @@ namespace AnyClone
         /// <param name="objectTree">The object tree to prevent cyclical references</param>
         /// <param name="path">The current path being traversed</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path)
+        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths = null)
         {
+            if (IgnoreObjectName(null, path, options, ignorePropertiesOrPaths))
+                return null;
+
             if (sourceObject == null)
                 return null;
 
             // ensure we don't go too deep if specified
             if (maxDepth > 0 && currentDepth >= maxDepth)
                 return null;
+
+            if (ignorePropertiesOrPaths == null)
+                ignorePropertiesOrPaths = new List<string>();
 
             var typeSupport = new ExtendedType(sourceObject.GetType());
 
@@ -128,8 +158,8 @@ namespace AnyClone
                     var enumerator = (IDictionary)sourceObject;
                     foreach (DictionaryEntry item in enumerator)
                     {
-                        var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path);
-                        var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path);
+                        var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                        var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
                         newDictionary.Add(key, value);
                     }
                     return newObject;
@@ -144,7 +174,7 @@ namespace AnyClone
                     var enumerator = (IEnumerable)sourceObject;
                     foreach (var item in enumerator)
                     {
-                        var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path);
+                        var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
                         addMethod.Invoke(newObject, new object[] { element });
                     }
                     return newObject;
@@ -159,7 +189,7 @@ namespace AnyClone
                     for (var i = 0; i < sourceArray.Length; i++)
                     {
                         var element = sourceArray.GetValue(i);
-                        var newElement = InspectAndCopy(element, currentDepth, maxDepth, options, objectTree, path);
+                        var newElement = InspectAndCopy(element, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
                         newArray.SetValue(newElement, i);
                     }
                     return newArray;
@@ -174,11 +204,10 @@ namespace AnyClone
                     foreach (var field in fields)
                     {
                         path = $"{rootPath}.{field.Name}";
-#if FEATURE_CUSTOM_ATTRIBUTES
-                        if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.AttributeType)) && !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
-#else
-                    if (field.CustomAttributes.Any(x => _ignoreAttributes.Contains(x.Constructor.DeclaringType)) && !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
-#endif
+                        if (IgnoreObjectName(field.Name, path, options, ignorePropertiesOrPaths, field.CustomAttributes))
+                            continue;
+                        // also check the property for ignore, if this is a auto-backing property
+                        if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
                             continue;
                         var fieldTypeSupport = new ExtendedType(field.Type);
                         var fieldValue = sourceObject.GetFieldValue(field);
@@ -186,7 +215,7 @@ namespace AnyClone
                             newObject.SetFieldValue(field, fieldValue);
                         else if (fieldValue != null)
                         {
-                            var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, path);
+                            var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
                             newObject.SetFieldValue(field, clonedFieldValue);
                         }
                     }
@@ -200,6 +229,53 @@ namespace AnyClone
             }
         }
 
+        /// <summary>
+        /// Returns true if object name should be ignored
+        /// </summary>
+        /// <param name="name">Property or field name</param>
+        /// <param name="path">Full path to object</param>
+        /// <param name="options">Comparison options</param>
+        /// <param name="ignorePropertiesOrPaths">List of names or paths to ignore</param>
+        /// <returns></returns>
+        private bool IgnoreObjectName(string name, string path, CloneOptions options, ICollection<string> ignorePropertiesOrPaths, IEnumerable<CustomAttributeData> attributes = null)
+        {
+            var ignoreByNameOrPath = ignorePropertiesOrPaths?.Contains(name) == true || ignorePropertiesOrPaths?.Contains(path) == true;
+            if (ignoreByNameOrPath)
+                return true;
+#if FEATURE_CUSTOM_ATTRIBUTES
+            if (attributes?.Any(x => !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes) && (_ignoreAttributes.Contains(x.AttributeType) || _ignoreAttributes.Contains(x.AttributeType.Name))) == true)
+#else
+            if (attributes?.Any(x => !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes) && (_ignoreAttributes.Contains(x.Constructor.DeclaringType) || _ignoreAttributes.Contains(x.Constructor.DeclaringType.Name))) == true)
+#endif
+                return true;
+            return false;
+        }
 
+        /// <summary>
+        /// Convert an expression of properties to a list of property names
+        /// </summary>
+        /// <param name="ignoreProperties"></param>
+        /// <returns></returns>
+        private ICollection<string> ConvertToPropertyNameList(Expression<Func<T, object>>[] ignoreProperties)
+        {
+            var ignorePropertiesList = new List<string>();
+            foreach (var expression in ignoreProperties)
+            {
+                var name = "";
+                switch (expression.Body)
+                {
+                    case MemberExpression m:
+                        name = m.Member.Name;
+                        break;
+                    case UnaryExpression u when u.Operand is MemberExpression m:
+                        name = m.Member.Name;
+                        break;
+                    default:
+                        throw new NotImplementedException(expression.GetType().ToString());
+                }
+                ignorePropertiesList.Add(name);
+            }
+            return ignorePropertiesList;
+        }
     }
 }

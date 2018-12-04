@@ -1,4 +1,5 @@
-﻿using AnyClone.Tests.TestObjects;
+﻿using AnyClone.Extensions;
+using AnyClone.Tests.TestObjects;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
@@ -215,10 +216,12 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_CustomCollectionObject()
         {
-            var original = new CustomCollectionObject<BasicObject>(100, "test");
-            original.Add(new BasicObject() { IntValue = 1, BoolValue = true, ByteValue = 10, LongValue = 100, StringValue = "Test 1" });
-            original.Add(new BasicObject() { IntValue = 2, BoolValue = false, ByteValue = 20, LongValue = 200, StringValue = "Test 2" });
-            original.Add(new BasicObject() { IntValue = 3, BoolValue = true, ByteValue = 30, LongValue = 300, StringValue = "Test 3" });
+            var original = new CustomCollectionObject<BasicObject>(100, "test")
+            {
+                new BasicObject() { IntValue = 1, BoolValue = true, ByteValue = 10, LongValue = 100, StringValue = "Test 1" },
+                new BasicObject() { IntValue = 2, BoolValue = false, ByteValue = 20, LongValue = 200, StringValue = "Test 2" },
+                new BasicObject() { IntValue = 3, BoolValue = true, ByteValue = 30, LongValue = 300, StringValue = "Test 3" }
+            };
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);

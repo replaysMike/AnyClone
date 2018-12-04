@@ -1,21 +1,16 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 
 namespace AnyClone.Tests.TestObjects
 {
-    public class BasicObject : IEquatable<BasicObject>
+    public class BasicObjectWithJsonIgnore : IEquatable<BasicObjectWithJsonIgnore>
     {
-        private int _privateIntValue;
         public bool BoolValue { get; set; }
         public byte ByteValue { get; set; }
         public int IntValue { get; set; }
         public long LongValue { get; set; }
+        [JsonIgnore]
         public string StringValue { get; set; }
-
-        public BasicObject() { }
-        public BasicObject(int privateIntValue)
-        {
-            _privateIntValue = privateIntValue;
-        }
 
         public override int GetHashCode()
         {
@@ -24,24 +19,21 @@ namespace AnyClone.Tests.TestObjects
 
         public override bool Equals(object obj)
         {
-            if (obj == null || obj.GetType() != typeof(BasicObject))
+            if (obj == null || obj.GetType() != typeof(BasicObjectWithJsonIgnore))
                 return false;
-
-            var basicObject = (BasicObject)obj;
+            var basicObject = (BasicObjectWithJsonIgnore)obj;
             return Equals(basicObject);
         }
 
-        public bool Equals(BasicObject other)
+        public bool Equals(BasicObjectWithJsonIgnore other)
         {
             if (other == null)
                 return false;
-            return 
-                other._privateIntValue == _privateIntValue
-                && other.BoolValue == BoolValue
+            return other.BoolValue == BoolValue
                 && other.ByteValue == ByteValue
                 && other.IntValue == IntValue
                 && other.LongValue == LongValue
-                && other.StringValue == StringValue
+                // && other.StringValue == StringValue
                 ;
         }
     }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text;
 
 namespace AnyClone.Tests.TestObjects
 {
@@ -12,7 +12,9 @@ namespace AnyClone.Tests.TestObjects
 
         public delegate void TestDelegate(int value);
         public TestDelegate MyTestDelegate { get; set; }
+#pragma warning disable 0067
         public event TestDelegate OnTestDelegate;
+#pragma warning restore 0067
 
         public List<string> listOfStrings = new List<string>();
         public ATestClass TestClassNoSetter { get; }
@@ -44,7 +46,10 @@ namespace AnyClone.Tests.TestObjects
             // this doesn't do anything
         }
 
-
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
         public override bool Equals(object obj)
         {
             var basicObject = (ComplexObject)obj;
@@ -81,6 +86,10 @@ namespace AnyClone.Tests.TestObjects
         public string Description { get; set; }
         public ITestInterface TestInterface { get; set; }
 
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
         public override bool Equals(object obj)
         {
             var basicObject = (ATestClass)obj;
