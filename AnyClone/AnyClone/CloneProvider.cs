@@ -14,9 +14,8 @@ namespace AnyClone
     /// Provider for cloning objects
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class CloneProvider<T>
+    public class CloneProvider<T> : CloneProvider
     {
-        public static readonly int DefaultMaxDepth = 32;
         private readonly ObjectFactory _objectFactory;
         private readonly ICollection<object> _ignoreAttributes = new List<object> {
             typeof(IgnoreDataMemberAttribute),
@@ -29,7 +28,7 @@ namespace AnyClone
         /// <summary>
         /// Provider for cloning objects
         /// </summary>
-        public CloneProvider()
+        public CloneProvider() : base()
         {
             _objectFactory = new ObjectFactory();
         }
@@ -216,7 +215,6 @@ namespace AnyClone
             {
                 var sourceArray = sourceObject as Array;
                 var newArray = newObject as Array;
-                newObject = newArray;
                 for (var i = 0; i < sourceArray.Length; i++)
                 {
                     var element = sourceArray.GetValue(i);
@@ -304,5 +302,12 @@ namespace AnyClone
             }
             return ignorePropertiesList;
         }
+    }
+
+    public class CloneProvider
+    {
+        public static readonly int DefaultMaxDepth = 32;
+
+        internal CloneProvider() { }
     }
 }
