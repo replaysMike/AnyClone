@@ -16,8 +16,7 @@ namespace AnyClone
     /// <typeparam name="T"></typeparam>
     public class CloneProvider<T>
     {
-        public const int DefaultMaxDepth = 32;
-        private readonly Type _type;
+        public static readonly int DefaultMaxDepth = 32;
         private readonly ObjectFactory _objectFactory;
         private readonly ICollection<object> _ignoreAttributes = new List<object> {
             typeof(IgnoreDataMemberAttribute),
@@ -32,8 +31,28 @@ namespace AnyClone
         /// </summary>
         public CloneProvider()
         {
-            _type = typeof(T);
             _objectFactory = new ObjectFactory();
+        }
+
+        /// <summary>
+        /// Clone any objects
+        /// </summary>
+        /// <param name="sourceObject">The object to clone</param>
+        /// <returns></returns>
+        public T Clone(T sourceObject)
+        {
+            return (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, CloneOptions.None, new Dictionary<int, object>(), string.Empty);
+        }
+
+        /// <summary>
+        /// Clone any objects
+        /// </summary>
+        /// <param name="sourceObject">The object to clone</param>
+        /// <param name="options">The cloning options</param>
+        /// <returns></returns>
+        public T Clone(T sourceObject, CloneOptions options)
+        {
+            return (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, options, new Dictionary<int, object>(), string.Empty);
         }
 
         /// <summary>
@@ -43,7 +62,7 @@ namespace AnyClone
         /// <param name="options">The cloning options</param>
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
-        public T Clone(T sourceObject, CloneOptions options = CloneOptions.None, int maxTreeDepth = DefaultMaxDepth)
+        public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth)
         {
             return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty);
         }
@@ -82,7 +101,23 @@ namespace AnyClone
         /// <param name="objectTree">The object tree to prevent cyclical references</param>
         /// <param name="path">The current path being traversed</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths = null)
+        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path)
+        {
+            return InspectAndCopy(sourceObject, currentDepth, maxDepth, options, objectTree, path, null);
+        }
+
+        /// <summary>
+        /// (Recursive) Recursive function that inspects an object and its properties/fields and clones it
+        /// </summary>
+        /// <param name="sourceObject">The object to clone</param>
+        /// <param name="currentDepth">The current tree depth</param>
+        /// <param name="maxDepth">The max tree depth</param>
+        /// <param name="options">The cloning options</param>
+        /// <param name="objectTree">The object tree to prevent cyclical references</param>
+        /// <param name="path">The current path being traversed</param>
+        /// <param name="ignorePropertiesOrPaths">A list of properties or paths to ignore</param>
+        /// <returns></returns>
+        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
         {
             if (IgnoreObjectName(null, path, options, ignorePropertiesOrPaths))
                 return null;
@@ -93,9 +128,6 @@ namespace AnyClone
             // ensure we don't go too deep if specified
             if (maxDepth > 0 && currentDepth >= maxDepth)
                 return null;
-
-            if (ignorePropertiesOrPaths == null)
-                ignorePropertiesOrPaths = new List<string>();
 
             var typeSupport = new ExtendedType(sourceObject.GetType());
 
@@ -114,9 +146,9 @@ namespace AnyClone
                 var length = 0;
                 if (typeSupport.IsArray)
                     length = (sourceObject as Array).Length;
-                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, length: length);
+                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, default(TypeRegistry), length);
             }
-            else if(typeSupport.Type == typeof(string))
+            else if (typeSupport.Type == typeof(string))
             {
                 // copy the item directly
                 newObject = String.Copy((string)sourceObject);
@@ -144,89 +176,84 @@ namespace AnyClone
                 // ensure we can refer back to the reference for this object
                 objectTree.Add(hashCode, newObject);
             }
-            try
+
+            // clone a dictionary's key/values
+            if (typeSupport.IsDictionary && typeSupport.IsGeneric)
             {
-                // clone a dictionary's key/values
-                if (typeSupport.IsDictionary && typeSupport.IsGeneric)
+                var genericType = typeSupport.Type.GetGenericArguments().ToList();
+                Type[] typeArgs = { genericType[0], genericType[1] };
+
+                var listType = typeof(Dictionary<,>).MakeGenericType(typeArgs);
+                var newDictionary = Activator.CreateInstance(listType) as IDictionary;
+                newObject = newDictionary;
+                var enumerator = (IDictionary)sourceObject;
+                foreach (DictionaryEntry item in enumerator)
                 {
-                    var genericType = typeSupport.Type.GetGenericArguments().ToList();
-                    Type[] typeArgs = { genericType[0], genericType[1] };
-
-                    var listType = typeof(Dictionary<,>).MakeGenericType(typeArgs);
-                    var newDictionary = Activator.CreateInstance(listType) as IDictionary;
-                    newObject = newDictionary;
-                    var enumerator = (IDictionary)sourceObject;
-                    foreach (DictionaryEntry item in enumerator)
-                    {
-                        var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                        var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                        newDictionary.Add(key, value);
-                    }
-                    return newObject;
+                    var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                    var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                    newDictionary.Add(key, value);
                 }
-
-                // clone an enumerables' elements
-                if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
-                {
-                    var genericType = typeSupport.Type.GetGenericArguments().First();
-                    var genericExtendedType = new ExtendedType(genericType);
-                    var addMethod = typeSupport.Type.GetMethod("Add");
-                    var enumerator = (IEnumerable)sourceObject;
-                    foreach (var item in enumerator)
-                    {
-                        var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                        addMethod.Invoke(newObject, new object[] { element });
-                    }
-                    return newObject;
-                }
-
-                // clone an arrays' elements
-                if (typeSupport.IsArray)
-                {
-                    var sourceArray = sourceObject as Array;
-                    var newArray = newObject as Array;
-                    newObject = newArray;
-                    for (var i = 0; i < sourceArray.Length; i++)
-                    {
-                        var element = sourceArray.GetValue(i);
-                        var newElement = InspectAndCopy(element, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                        newArray.SetValue(newElement, i);
-                    }
-                    return newArray;
-                }
-
-                var fields = sourceObject.GetFields(FieldOptions.AllWritable);
-
-                var rootPath = path;
-                // clone and recurse fields
-                if (newObject != null)
-                {
-                    foreach (var field in fields)
-                    {
-                        path = $"{rootPath}.{field.Name}";
-                        if (IgnoreObjectName(field.Name, path, options, ignorePropertiesOrPaths, field.CustomAttributes))
-                            continue;
-                        // also check the property for ignore, if this is a auto-backing property
-                        if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
-                            continue;
-                        var fieldTypeSupport = new ExtendedType(field.Type);
-                        var fieldValue = sourceObject.GetFieldValue(field);
-                        if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
-                            newObject.SetFieldValue(field, fieldValue);
-                        else if (fieldValue != null)
-                        {
-                            var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                            newObject.SetFieldValue(field, clonedFieldValue);
-                        }
-                    }
-                }
-
                 return newObject;
             }
-            finally
-            {
 
+            // clone an enumerables' elements
+            if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
+            {
+                var genericType = typeSupport.Type.GetGenericArguments().First();
+                var genericExtendedType = new ExtendedType(genericType);
+                var addMethod = typeSupport.Type.GetMethod("Add");
+                var enumerator = (IEnumerable)sourceObject;
+                foreach (var item in enumerator)
+                {
+                    var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                    addMethod.Invoke(newObject, new[] { element });
+                }
+                return newObject;
             }
+
+            // clone an arrays' elements
+            if (typeSupport.IsArray)
+            {
+                var sourceArray = sourceObject as Array;
+                var newArray = newObject as Array;
+                newObject = newArray;
+                for (var i = 0; i < sourceArray.Length; i++)
+                {
+                    var element = sourceArray.GetValue(i);
+                    var newElement = InspectAndCopy(element, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                    newArray.SetValue(newElement, i);
+                }
+                return newArray;
+            }
+
+            var fields = sourceObject.GetFields(FieldOptions.AllWritable);
+
+            var rootPath = path;
+            var localPath = string.Empty;
+            // clone and recurse fields
+            if (newObject != null)
+            {
+                foreach (var field in fields)
+                {
+                    localPath = $"{rootPath}.{field.Name}";
+                    if (IgnoreObjectName(field.Name, localPath, options, ignorePropertiesOrPaths, field.CustomAttributes))
+                        continue;
+                    // also check the property for ignore, if this is a auto-backing property
+                    if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
+                        continue;
+                    var fieldTypeSupport = new ExtendedType(field.Type);
+                    var fieldValue = sourceObject.GetFieldValue(field);
+                    if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
+                        newObject.SetFieldValue(field, fieldValue);
+                    else if (fieldValue != null)
+                    {
+                        var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, localPath, ignorePropertiesOrPaths);
+                        newObject.SetFieldValue(field, clonedFieldValue);
+                    }
+                }
+            }
+
+            return newObject;
         }
 
         /// <summary>
@@ -256,7 +283,7 @@ namespace AnyClone
         /// </summary>
         /// <param name="ignoreProperties"></param>
         /// <returns></returns>
-        private ICollection<string> ConvertToPropertyNameList(Expression<Func<T, object>>[] ignoreProperties)
+        private static ICollection<string> ConvertToPropertyNameList(Expression<Func<T, object>>[] ignoreProperties)
         {
             var ignorePropertiesList = new List<string>();
             foreach (var expression in ignoreProperties)
