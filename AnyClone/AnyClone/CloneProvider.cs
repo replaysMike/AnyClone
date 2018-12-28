@@ -198,7 +198,6 @@ namespace AnyClone
             // clone an enumerables' elements
             if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
             {
-                var genericType = typeSupport.Type.GetGenericArguments().First();
                 var addMethod = typeSupport.Type.GetMethod("Add");
                 var enumerator = (IEnumerable)sourceObject;
                 foreach (var item in enumerator)
