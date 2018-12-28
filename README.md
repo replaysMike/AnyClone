@@ -3,6 +3,7 @@
 [![nuget](https://img.shields.io/nuget/dt/AnyClone.svg)](https://www.nuget.org/packages/AnyClone/)
 [![Build status](https://ci.appveyor.com/api/projects/status/xr7gebcdins0hs4f?svg=true)](https://ci.appveyor.com/project/MichaelBrown/anyclone)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/24f78d682c844168809617fd56ecad0f)](https://www.codacy.com/app/replaysMike/AnyClone?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=replaysMike/AnyClone&amp;utm_campaign=Badge_Grade)
+[![Codacy Badge](https://api.codacy.com/project/badge/Coverage/24f78d682c844168809617fd56ecad0f)](https://www.codacy.com/app/replaysMike/AnyClone?utm_source=github.com&utm_medium=referral&utm_content=replaysMike/AnyClone&utm_campaign=Badge_Coverage)
 
 A CSharp library that can deep clone any object using only reflection.
 
