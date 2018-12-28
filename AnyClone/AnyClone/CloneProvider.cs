@@ -28,7 +28,7 @@ namespace AnyClone
         /// <summary>
         /// Provider for cloning objects
         /// </summary>
-        public CloneProvider() : base()
+        public CloneProvider()
         {
             _objectFactory = new ObjectFactory();
         }
@@ -199,7 +199,6 @@ namespace AnyClone
             if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
             {
                 var genericType = typeSupport.Type.GetGenericArguments().First();
-                var genericExtendedType = new ExtendedType(genericType);
                 var addMethod = typeSupport.Type.GetMethod("Add");
                 var enumerator = (IEnumerable)sourceObject;
                 foreach (var item in enumerator)
@@ -308,6 +307,6 @@ namespace AnyClone
     {
         public static readonly int DefaultMaxDepth = 32;
 
-        internal CloneProvider() { }
+        protected CloneProvider() { }
     }
 }
