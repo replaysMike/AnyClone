@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -130,6 +131,12 @@ namespace AnyClone
 
             var typeSupport = new ExtendedType(sourceObject.GetType());
 
+            // always return the original value on value types
+            if (typeSupport.IsValueType)
+            {
+                return sourceObject;
+            }
+
             // drop any objects we are ignoring by attribute
             if (typeSupport.Attributes.Any(x => _ignoreAttributes.Contains(x)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
                 return null;
@@ -232,6 +239,8 @@ namespace AnyClone
                 foreach (var field in fields)
                 {
                     localPath = $"{rootPath}.{field.Name}";
+                    if (localPath == ".<GameRound>k__BackingField")
+                        Debugger.Break();
                     if (IgnoreObjectName(field.Name, localPath, options, ignorePropertiesOrPaths, field.CustomAttributes))
                         continue;
                     // also check the property for ignore, if this is a auto-backing property
