@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -192,12 +191,28 @@ namespace AnyClone
                 var listType = typeof(Dictionary<,>).MakeGenericType(typeArgs);
                 var newDictionary = Activator.CreateInstance(listType) as IDictionary;
                 newObject = newDictionary;
-                var enumerator = (IDictionary)sourceObject;
-                foreach (DictionaryEntry item in enumerator)
+                var iDictionary = (IDictionary)sourceObject;
+                var success = false;
+                var retryCount = 0;
+                while (!success && retryCount < 10)
                 {
-                    var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                    var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                    newDictionary.Add(key, value);
+                    try
+                    {
+                        foreach (DictionaryEntry item in iDictionary)
+                        {
+                            var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                            var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                            newDictionary.Add(key, value);
+                        }
+                        success = true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // if the collection was modified during enumeration, stop re-initialize and retry
+                        success = false;
+                        retryCount++;
+                        newDictionary.Clear();
+                    }
                 }
                 return newObject;
             }
@@ -206,11 +221,34 @@ namespace AnyClone
             if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
             {
                 var addMethod = typeSupport.Type.GetMethod("Add");
+                if(addMethod == null)
+                    addMethod = typeSupport.Type.GetMethod("Enqueue");
+                if (addMethod == null)
+                    addMethod = typeSupport.Type.GetMethod("Push");
+                if (addMethod == null)
+                    throw new TypeException($"Unsupported IEnumerable type: {typeSupport.Type.Name}");
                 var enumerator = (IEnumerable)sourceObject;
-                foreach (var item in enumerator)
+                var success = false;
+                var retryCount = 0;
+                while (!success && retryCount < 10)
                 {
-                    var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                    addMethod.Invoke(newObject, new[] { element });
+                    try
+                    {
+                        foreach (var item in enumerator)
+                        {
+                            var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                            addMethod.Invoke(newObject, new[] { element });
+                        }
+                        success = true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // if the collection was modified during enumeration, stop re-initialize and retry
+                        success = false;
+                        retryCount++;
+                        var clearMethod = typeSupport.Type.GetMethod("Clear");
+                        clearMethod?.Invoke(newObject, null);
+                    }
                 }
                 return newObject;
             }
@@ -239,8 +277,6 @@ namespace AnyClone
                 foreach (var field in fields)
                 {
                     localPath = $"{rootPath}.{field.Name}";
-                    if (localPath == ".<GameRound>k__BackingField")
-                        Debugger.Break();
                     if (IgnoreObjectName(field.Name, localPath, options, ignorePropertiesOrPaths, field.CustomAttributes))
                         continue;
                     // also check the property for ignore, if this is a auto-backing property
