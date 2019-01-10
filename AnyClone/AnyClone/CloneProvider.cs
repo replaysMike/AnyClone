@@ -216,12 +216,11 @@ namespace AnyClone
                 }
                 return newObject;
             }
-
-            // clone an enumerables' elements
-            if (typeSupport.IsEnumerable && typeSupport.IsGeneric)
+            else if (typeSupport.IsEnumerable && !typeSupport.IsArray)
             {
+                // clone an enumerables' elements
                 var addMethod = typeSupport.Type.GetMethod("Add");
-                if(addMethod == null)
+                if (addMethod == null)
                     addMethod = typeSupport.Type.GetMethod("Enqueue");
                 if (addMethod == null)
                     addMethod = typeSupport.Type.GetMethod("Push");
