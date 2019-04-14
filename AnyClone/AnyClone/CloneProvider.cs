@@ -17,7 +17,9 @@ namespace AnyClone
     public class CloneProvider<T> : CloneProvider
     {
         private readonly ObjectFactory _objectFactory;
-        private readonly ICollection<object> _ignoreAttributes = new List<object> {
+		private const TypeSupportOptions _defaultTypeSupportOptions = TypeSupportOptions.Attributes | TypeSupportOptions.Collections | TypeSupportOptions.Enums | TypeSupportOptions.Generics | TypeSupportOptions.Caching;
+
+		private readonly ICollection<object> _ignoreAttributes = new List<object> {
             typeof(IgnoreDataMemberAttribute),
             typeof(NonSerializedAttribute),
             "JsonIgnoreAttribute",
@@ -128,7 +130,7 @@ namespace AnyClone
             if (maxDepth > 0 && currentDepth >= maxDepth)
                 return null;
 
-            var typeSupport = new ExtendedType(sourceObject.GetType());
+            var typeSupport = new ExtendedType(sourceObject.GetType(), _defaultTypeSupportOptions);
 
             // always return the original value on value types
             if (typeSupport.IsValueType)
@@ -281,7 +283,7 @@ namespace AnyClone
                     // also check the property for ignore, if this is a auto-backing property
                     if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
                         continue;
-                    var fieldTypeSupport = new ExtendedType(field.Type);
+                    var fieldTypeSupport = new ExtendedType(field.Type, _defaultTypeSupportOptions);
                     var fieldValue = sourceObject.GetFieldValue(field);
                     if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
                         newObject.SetFieldValue(field, fieldValue);
