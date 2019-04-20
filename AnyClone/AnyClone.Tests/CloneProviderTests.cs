@@ -1,5 +1,4 @@
-﻿using AnyClone.Extensions;
-using AnyClone.Tests.TestObjects;
+﻿using AnyClone.Tests.TestObjects;
 using NUnit.Framework;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,6 +49,40 @@ namespace AnyClone.Tests
                 ByteArray = new byte[] { 0x01, 0x02, 0x03, 0x04 },
                 IntArray = new int[] { 1, 2, 3, 4 },
                 DoubleArray = new double[] { 1.0, 2.0, 3.0, 4.0, 5.0 },
+            };
+            var cloned = original.Clone();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_2dMultidimensionalArrayObject()
+        {
+            var original = new MultiDimensional2dArrayObject
+            {
+                Int2DArray = new int[4, 2] {
+                    { 1, 2 },
+                    { 3, 4 },
+                    { 5, 6 },
+                    { 7, 8 }
+                }
+            };
+            var cloned = original.Clone();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_3dMultidimensionalArrayObject()
+        {
+            var original = new MultiDimensional3dArrayObject
+            {
+                Int3DArray = new int[2, 3, 3] {
+                    // row 1
+                    { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 } },
+                    // row 2
+                    { { 10, 11, 12 }, { 13, 14, 15 }, { 16, 17, 18 } }
+                }
             };
             var cloned = original.Clone();
 

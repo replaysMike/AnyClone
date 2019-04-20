@@ -150,10 +150,14 @@ namespace AnyClone
             // create a new empty object of the desired type
             if (typeSupport.IsArray)
             {
-                var length = 0;
-                if (typeSupport.IsArray)
-                    length = (sourceObject as Array).Length;
-                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, default(TypeRegistry), length);
+                var sourceArray = sourceObject as Array;
+                // calculate the dimensions of the array
+                var arrayRank = sourceArray.Rank;
+                // get the length of each dimension
+                var arrayDimensions = new List<int>();
+                for (var dimension = 0; dimension < arrayRank; dimension++)
+                    arrayDimensions.Add(sourceArray.GetLength(dimension));
+                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, default(TypeRegistry), arrayDimensions.ToArray());
             }
             else if (typeSupport.Type == typeof(string))
             {
@@ -259,11 +263,40 @@ namespace AnyClone
             {
                 var sourceArray = sourceObject as Array;
                 var newArray = newObject as Array;
-                for (var i = 0; i < sourceArray.Length; i++)
+                var arrayRank = newArray.Rank;
+                var arrayDimensions = new List<int>();
+                for (var dimension = 0; dimension < arrayRank; dimension++)
+                    arrayDimensions.Add(newArray.GetLength(dimension));
+                var flatRowIndex = 0;
+                foreach(var row in sourceArray)
                 {
-                    var element = sourceArray.GetValue(i);
-                    var newElement = InspectAndCopy(element, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                    newArray.SetValue(newElement, i);
+                    var newElement = InspectAndCopy(row, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                    // performance optimization, skip dimensional processing if it's a 1d array
+                    if (arrayRank > 1)
+                    {
+                        // this is an optimized multi-dimensional array reconstruction
+                        // based on the formula: indicies.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
+                        var indicies = new List<int>();
+                        for (var r = 1; r <= arrayRank; r++)
+                        {
+                            var multi = 1;
+                            for (var p = 1; p < r; p++)
+                            {
+                                multi *= arrayDimensions[arrayRank - p];
+                            }
+                            var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
+                            indicies.Add(b);
+                        }
+                        indicies.Reverse();
+                        // set element of multi-dimensional array
+                        newArray.SetValue(newElement, indicies.ToArray());
+                    }
+                    else
+                    {
+                        // set element of 1d array
+                        newArray.SetValue(newElement, flatRowIndex);
+                    }
+                    flatRowIndex++;
                 }
                 return newArray;
             }
