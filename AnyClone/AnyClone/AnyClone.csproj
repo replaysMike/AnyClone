@@ -12,6 +12,9 @@
     <Version>1.0.6</Version>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net45' OR '$(TargetFramework)'=='net46' OR '$(TargetFramework)'=='net461' OR '$(TargetFramework)'=='net462'">
@@ -25,6 +28,7 @@
   <ItemGroup>
     <PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13" PrivateAssets="all" />
     <PackageReference Include="TypeSupport" Version="1.0.108" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <Target Name="ILRepack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' AND '$(TargetFramework)' != ''">
