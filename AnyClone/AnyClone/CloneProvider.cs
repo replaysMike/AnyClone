@@ -183,10 +183,16 @@ namespace AnyClone
             {
                 var hashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
                 if (objectTree.ContainsKey(hashCode))
-                    return objectTree[hashCode];
+                {
+                    if (objectTree[hashCode].GetType() == type)
+                        return objectTree[hashCode];
 
-                // ensure we can refer back to the reference for this object
-                objectTree.Add(hashCode, newObject);
+                }
+                else
+                {
+                    // ensure we can refer back to the reference for this object
+                    objectTree.Add(hashCode, newObject);
+                }
             }
 
             // clone a dictionary's key/values
@@ -317,6 +323,11 @@ namespace AnyClone
                     // also check the property for ignore, if this is a auto-backing property
                     if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
                         continue;
+#if FEATURE_DISABLE_SET_INITONLY
+                    // we can't duplicate init-only fields since .net core 3.0+
+                    if (field.FieldInfo.IsInitOnly)
+                        continue;
+#endif
                     var fieldTypeSupport = field.Type;
                     var fieldValue = sourceObject.GetFieldValue(field);
                     if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
