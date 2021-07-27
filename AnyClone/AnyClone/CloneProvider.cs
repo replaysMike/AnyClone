@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.Serialization;
 using TypeSupport;
 using TypeSupport.Extensions;
@@ -14,10 +15,15 @@ namespace AnyClone
     /// Provider for cloning objects
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public class CloneProvider<T> : CloneProvider
+    public partial class CloneProvider<T>
     {
+        /// <summary>
+        /// Set the maximum recursion depth
+        /// </summary>
+        public const int DefaultMaxDepth = 32;
+
+        private delegate void _memberUpdaterByRef(ref object source, object value);
         private readonly ObjectFactory _objectFactory;
-		private const TypeSupportOptions DefaultTypeSupportOptions = TypeSupportOptions.Attributes | TypeSupportOptions.Collections | TypeSupportOptions.Enums | TypeSupportOptions.Generics | TypeSupportOptions.Caching;
 
 		private readonly ICollection<object> _ignoreAttributes = new List<object> {
             typeof(IgnoreDataMemberAttribute),
@@ -25,6 +31,9 @@ namespace AnyClone
             "JsonIgnoreAttribute",
         };
 
+        /// <summary>
+        /// Cloning error event
+        /// </summary>
         public Action<Exception, string, object, object> OnCloneError { get; set; }
 
         /// <summary>
@@ -33,78 +42,6 @@ namespace AnyClone
         public CloneProvider()
         {
             _objectFactory = new ObjectFactory();
-        }
-
-        /// <summary>
-        /// Clone any objects
-        /// </summary>
-        /// <param name="sourceObject">The object to clone</param>
-        /// <returns></returns>
-        public T Clone(T sourceObject)
-        {
-            return (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, CloneOptions.None, new Dictionary<int, object>(), string.Empty);
-        }
-
-        /// <summary>
-        /// Clone any objects
-        /// </summary>
-        /// <param name="sourceObject">The object to clone</param>
-        /// <param name="options">The cloning options</param>
-        /// <returns></returns>
-        public T Clone(T sourceObject, CloneOptions options)
-        {
-            return (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, options, new Dictionary<int, object>(), string.Empty);
-        }
-
-        /// <summary>
-        /// Clone any objects
-        /// </summary>
-        /// <param name="sourceObject">The object to clone</param>
-        /// <param name="options">The cloning options</param>
-        /// <param name="maxTreeDepth">The maximum tree depth</param>
-        /// <returns></returns>
-        public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth)
-        {
-            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty);
-        }
-
-        /// <summary>
-        /// Clone any objects
-        /// </summary>
-        /// <param name="sourceObject">The object to clone</param>
-        /// <param name="options">The cloning options</param>
-        /// <param name="maxTreeDepth">The maximum tree depth</param>
-        /// <returns></returns>
-        public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth, params string[] ignorePropertiesOrPaths)
-        {
-            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty, ignorePropertiesOrPaths);
-        }
-
-        /// <summary>
-        /// Clone any objects
-        /// </summary>
-        /// <param name="sourceObject">The object to clone</param>
-        /// <param name="options">The cloning options</param>
-        /// <param name="maxTreeDepth">The maximum tree depth</param>
-        /// <returns></returns>
-        public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth, params Expression<Func<T, object>>[] ignoreProperties)
-        {
-            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, options, new Dictionary<int, object>(), string.Empty, ConvertToPropertyNameList(ignoreProperties));
-        }
-
-        /// <summary>
-        /// (Recursive) Recursive function that inspects an object and its properties/fields and clones it
-        /// </summary>
-        /// <param name="sourceObject">The object to clone</param>
-        /// <param name="currentDepth">The current tree depth</param>
-        /// <param name="maxDepth">The max tree depth</param>
-        /// <param name="options">The cloning options</param>
-        /// <param name="objectTree">The object tree to prevent cyclical references</param>
-        /// <param name="path">The current path being traversed</param>
-        /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path)
-        {
-            return InspectAndCopy(sourceObject, currentDepth, maxDepth, options, objectTree, path, null);
         }
 
         /// <summary>
@@ -151,7 +88,8 @@ namespace AnyClone
             // create a new empty object of the desired type
             if (typeSupport.IsArray)
             {
-                var sourceArray = sourceObject as Array;
+                if (!(sourceObject is Array sourceArray))
+                    throw new NullReferenceException($"{nameof(sourceArray)} cannot be null!");
                 // calculate the dimensions of the array
                 var arrayRank = sourceArray.Rank;
                 // get the length of each dimension
@@ -163,7 +101,7 @@ namespace AnyClone
             else if (typeSupport.Type == typeof(string))
             {
                 // copy the item directly
-                newObject = String.Copy((string)sourceObject);
+                newObject = string.Copy((string)sourceObject);
                 return newObject;
             }
             else
@@ -172,14 +110,14 @@ namespace AnyClone
             }
 
             if (newObject == null)
-                return newObject;
+                return null;
 
             // increment the current recursion depth
             currentDepth++;
 
             // construct a hashtable of objects we have already inspected (simple recursion loop preventer)
             // we use this hashcode method as it does not use any custom hashcode handlers the object might implement
-            if (sourceObject != null && !typeSupport.IsValueType)
+            if (!typeSupport.IsValueType)
             {
                 var hashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
                 if (objectTree.ContainsKey(hashCode))
@@ -203,7 +141,7 @@ namespace AnyClone
 
                 var listType = typeof(Dictionary<,>).MakeGenericType(typeArgs);
                 var newDictionary = Activator.CreateInstance(listType) as IDictionary;
-                newObject = newDictionary;
+                newObject = newDictionary ?? throw new NullReferenceException($"{nameof(newDictionary)} cannot be null");
                 var iDictionary = (IDictionary)sourceObject;
                 var success = false;
                 var retryCount = 0;
@@ -231,7 +169,7 @@ namespace AnyClone
             }
             else if (typeSupport.IsEnumerable && !typeSupport.IsArray)
             {
-                // clone an enumerables' elements
+                // clone enumerable elements
                 var addMethod = typeSupport.Type.GetMethod("Add");
                 if (addMethod == null)
                     addMethod = typeSupport.Type.GetMethod("Enqueue");
@@ -282,8 +220,8 @@ namespace AnyClone
                     if (arrayRank > 1)
                     {
                         // this is an optimized multi-dimensional array reconstruction
-                        // based on the formula: indicies.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
-                        var indicies = new List<int>();
+                        // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
+                        var indices = new List<int>();
                         for (var r = 1; r <= arrayRank; r++)
                         {
                             var multi = 1;
@@ -292,11 +230,11 @@ namespace AnyClone
                                 multi *= arrayDimensions[arrayRank - p];
                             }
                             var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
-                            indicies.Add(b);
+                            indices.Add(b);
                         }
-                        indicies.Reverse();
+                        indices.Reverse();
                         // set element of multi-dimensional array
-                        newArray.SetValue(newElement, indicies.ToArray());
+                        newArray.SetValue(newElement, indices.ToArray());
                     }
                     else
                     {
@@ -313,34 +251,83 @@ namespace AnyClone
             var rootPath = path;
             var localPath = string.Empty;
             // clone and recurse fields
-            if (newObject != null)
+            foreach (var field in fields)
             {
-                foreach (var field in fields)
-                {
-                    localPath = $"{rootPath}.{field.Name}";
-                    if (IgnoreObjectName(field.Name, localPath, options, ignorePropertiesOrPaths, field.CustomAttributes))
-                        continue;
-                    // also check the property for ignore, if this is a auto-backing property
-                    if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
-                        continue;
+                localPath = $"{rootPath}.{field.Name}";
+                if (IgnoreObjectName(field.Name, localPath, options, ignorePropertiesOrPaths, field.CustomAttributes))
+                    continue;
+                // also check the property for ignore, if this is a auto-backing property
+                if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
+                    continue;
 #if FEATURE_DISABLE_SET_INITONLY
-                    // we can't duplicate init-only fields since .net core 3.0+
-                    if (field.FieldInfo.IsInitOnly)
-                        continue;
+                // we can't duplicate init-only fields since .net core 3.0+
+                // make use of IL to get around this limitation
+                if (field.FieldInfo.IsInitOnly)
+                {
+                    var updater = GetWriterForField(field);
+                    var updateFieldValue = sourceObject.GetFieldValue(field);
+                    updater(ref newObject, updateFieldValue);
+                    continue;
+                }
 #endif
-                    var fieldTypeSupport = field.Type;
-                    var fieldValue = sourceObject.GetFieldValue(field);
-                    if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
-                        newObject.SetFieldValue(field, fieldValue);
-                    else if (fieldValue != null)
-                    {
-                        var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, localPath, ignorePropertiesOrPaths);
-                        newObject.SetFieldValue(field, clonedFieldValue);
-                    }
+
+                // utilize reflection
+                var fieldTypeSupport = field.Type;
+                var fieldValue = sourceObject.GetFieldValue(field);
+                if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
+                    newObject.SetFieldValue(field, fieldValue);
+                else if (fieldValue != null)
+                {
+                    var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, localPath, ignorePropertiesOrPaths);
+                    newObject.SetFieldValue(field, clonedFieldValue);
                 }
             }
 
             return newObject;
+        }
+
+        /// <summary>
+        /// Set a readonly field value
+        /// Not possible via reflection since .net standard 2.0 / .net core 3.0
+        /// </summary>
+        /// <param name="field"></param>
+        private _memberUpdaterByRef GetWriterForField(FieldInfo field)
+        {
+            // Partial credit to https://www.productiverage.com/trying-to-set-a-readonly-autoproperty-value-externally-plus-a-little-benchmarkdotnet
+            // dynamically generate a new method that will emit IL to set a field value
+            var type = field.DeclaringType;
+            var dynamicMethod = new DynamicMethod(
+                $"Set{field.Name}",
+                typeof(void),
+                new Type[] { typeof(object).MakeByRefType(), typeof(object) },
+                type.Module,
+                true
+            );
+
+            var gen = dynamicMethod.GetILGenerator();
+
+            // because arg 0 is a ref, ldarg pushes arg0's address to the stack instead of the object/value
+            gen.Emit(OpCodes.Ldarg_0);
+
+            // in order to set the value of a field on on the object we cant use it's address
+            // pop the address and push the instance to the stack
+            gen.Emit(OpCodes.Ldind_Ref);
+
+            // push the value that the field should be set to, to the stack
+            gen.Emit(OpCodes.Ldarg_1);
+
+            // because the value may be either a reference or value type, unbox it
+            gen.Emit(OpCodes.Unbox_Any, field.FieldType);
+
+            // pop the instance of the object, pop the value, and set the value of the field
+            gen.Emit(OpCodes.Stfld, field);
+
+            // no remaining objects on the stack, ret to exit
+            gen.Emit(OpCodes.Ret);
+
+
+            // create a delegate matching the parameter types
+            return (_memberUpdaterByRef)dynamicMethod.CreateDelegate(typeof(_memberUpdaterByRef));
         }
 
         /// <summary>
@@ -381,7 +368,7 @@ namespace AnyClone
                     case MemberExpression m:
                         name = m.Member.Name;
                         break;
-                    case UnaryExpression u when u.Operand is MemberExpression m:
+                    case UnaryExpression {Operand: MemberExpression m}:
                         name = m.Member.Name;
                         break;
                     default:
@@ -391,12 +378,5 @@ namespace AnyClone
             }
             return ignorePropertiesList;
         }
-    }
-
-    public class CloneProvider
-    {
-        public static readonly int DefaultMaxDepth = 32;
-
-        protected CloneProvider() { }
     }
 }

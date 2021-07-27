@@ -1,53 +1,54 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net40;net45;net46;net461;net462;net47;net48</TargetFrameworks>
-    <Authors>Michael Brown</Authors>
-    <Company>Refactor Software</Company>
-    <Description>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</Description>
-    <PackageProjectUrl>https://github.com/replaysMike/AnyClone</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/replaysMike/AnyClone</RepositoryUrl>
-    <PackageTags>deep-clone copy reflection refactor michael brown</PackageTags>
-    <PackageReleaseNotes>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</PackageReleaseNotes>
-    <Version>1.0.6</Version>
-    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.1;net40;net45;net46;net461;net462;net47;net48</TargetFrameworks>
+		<Authors>Michael Brown</Authors>
+		<Company>Refactor Software</Company>
+		<Description>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</Description>
+		<PackageProjectUrl>https://github.com/replaysMike/AnyClone</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/replaysMike/AnyClone</RepositoryUrl>
+		<PackageTags>deep-clone copy reflection refactor michael brown</PackageTags>
+		<PackageReleaseNotes>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</PackageReleaseNotes>
+		<Version>1.0.6</Version>
+		<PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<LangVersion>latest</LangVersion>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net45' OR '$(TargetFramework)'=='net46' OR '$(TargetFramework)'=='net461' OR '$(TargetFramework)'=='net462'">
-    <DefineConstants>FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net45' OR '$(TargetFramework)'=='net46' OR '$(TargetFramework)'=='net461' OR '$(TargetFramework)'=='net462'">
+		<DefineConstants>FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='net48'">
-    <DefineConstants>FEATURE_CUSTOM_VALUETUPLE;FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='net48'">
+		<DefineConstants>FEATURE_CUSTOM_VALUETUPLE;FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
+	</PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp3.0' OR '$(TargetFramework)'=='netcoreapp3.1' OR '$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='netstandard2.1'">
-    <DefineConstants>FEATURE_DISABLE_SET_INITONLY</DefineConstants>
-  </PropertyGroup>
+	<PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp3.0' OR '$(TargetFramework)'=='netcoreapp3.1' OR '$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='netstandard2.1'">
+		<DefineConstants>FEATURE_DISABLE_SET_INITONLY</DefineConstants>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13" PrivateAssets="all" />
-    <PackageReference Include="TypeSupport" Version="1.1.4" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="ILRepack.MSBuild.Task" Version="2.0.13" PrivateAssets="all" />
+		<PackageReference Include="TypeSupport" Version="1.1.4" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+	</ItemGroup>
 
-  <Target Name="ILRepack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' AND '$(TargetFramework)' != ''">
-    <PropertyGroup>
-      <WorkingDirectory>$(OutputPath)</WorkingDirectory>
-    </PropertyGroup>
-    <ItemGroup>
-      <!-- These are all the assemblies you want to embed -->
-      <InputAssemblies Include="TypeSupport.dll" />
-    </ItemGroup>
-    <ItemGroup>
-      <!-- Dot not internalize any types inside this assembly -->
-    </ItemGroup>
-    <Message Text="MERGING: $(TargetFramework) @(InputAssemblies->'%(Filename)') into $(OutputAssembly)" Importance="High" />
-    <ILRepack Parallel="true" AllowDuplicateResources="false" DebugInfo="true" OutputType="$(OutputType)" MainAssembly="$(AssemblyName).dll" OutputAssembly="$(AssemblyName).dll" InputAssemblies="@(InputAssemblies)" InternalizeExcludeAssemblies="@(InternalizeExcludeAssemblies)" WorkingDirectory="$(WorkingDirectory)" />
-  </Target>
+	<Target Name="ILRepack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' AND '$(TargetFramework)' != ''">
+		<PropertyGroup>
+			<WorkingDirectory>$(OutputPath)</WorkingDirectory>
+		</PropertyGroup>
+		<ItemGroup>
+			<!-- These are all the assemblies you want to embed -->
+			<InputAssemblies Include="TypeSupport.dll" />
+		</ItemGroup>
+		<ItemGroup>
+			<!-- Dot not internalize any types inside this assembly -->
+		</ItemGroup>
+		<Message Text="MERGING: $(TargetFramework) @(InputAssemblies->'%(Filename)') into $(OutputAssembly)" Importance="High" />
+		<ILRepack Parallel="true" AllowDuplicateResources="false" DebugInfo="true" OutputType="$(OutputType)" MainAssembly="$(AssemblyName).dll" OutputAssembly="$(AssemblyName).dll" InputAssemblies="@(InputAssemblies)" InternalizeExcludeAssemblies="@(InternalizeExcludeAssemblies)" WorkingDirectory="$(WorkingDirectory)" />
+	</Target>
 
 </Project>

@@ -16,9 +16,9 @@ namespace AnyClone.Tests.TestObjects
         public event TestDelegate OnTestDelegate;
 #pragma warning restore 0067
 
-        public List<string> listOfStrings = new List<string>();
+        public List<string> ListOfStrings = new List<string>();
         public ATestClass TestClassNoSetter { get; }
-        private ATestClass _anotherTestClass;
+        private readonly ATestClass _anotherTestClass;
 
         public ComplexObject(int initialValue)
         {
@@ -46,10 +46,8 @@ namespace AnyClone.Tests.TestObjects
             // this doesn't do anything
         }
 
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
+        public override int GetHashCode() => base.GetHashCode();
+
         public override bool Equals(object obj)
         {
             var basicObject = (ComplexObject)obj;
@@ -58,20 +56,16 @@ namespace AnyClone.Tests.TestObjects
 
         public bool Equals(ComplexObject other)
         {
-            var e1 = _isDisposed == other._isDisposed;
-            var e2 = _constField == other._constField;
-            var e3 = listOfStrings.AsEnumerable().SequenceEqual(other.listOfStrings);
-            var e4 = TestClassNoSetter.Equals(other.TestClassNoSetter);
-            var e5 = _anotherTestClass.Equals(other._anotherTestClass);
+            var e1 = _isDisposed == other?._isDisposed;
+            var e2 = _constField == other?._constField;
+            var e3 = ListOfStrings.AsEnumerable().SequenceEqual(other?.ListOfStrings);
+            var e4 = TestClassNoSetter.Equals(other?.TestClassNoSetter);
+            var e5 = _anotherTestClass.Equals(other?._anotherTestClass);
 
-            return e1 && e2 && e3 && e4 && e5
-                ;
+            return e1 && e2 && e3 && e4 && e5;
         }
 
-        protected virtual void Dispose(bool isDisposing)
-        {
-            _isDisposed = true;
-        }
+        protected virtual void Dispose(bool isDisposing) => _isDisposed = true;
 
         public void Dispose()
         {
@@ -86,10 +80,8 @@ namespace AnyClone.Tests.TestObjects
         public string Description { get; set; }
         public ITestInterface TestInterface { get; set; }
 
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
+        public override int GetHashCode() => base.GetHashCode();
+
         public override bool Equals(object obj)
         {
             var basicObject = (ATestClass)obj;
@@ -98,10 +90,11 @@ namespace AnyClone.Tests.TestObjects
 
         public bool Equals(ATestClass other)
         {
-            return Name.Equals(other.Name, StringComparison.CurrentCulture)
-                && Description.Equals(other.Description, StringComparison.CurrentCulture)
-                && TestInterface.Equals(other.TestInterface)
-                ;
+            if (other is null)
+                return false;
+            return Name?.Equals(other.Name, StringComparison.CurrentCulture) == true
+                && Description?.Equals(other.Description, StringComparison.CurrentCulture) == true
+                && TestInterface?.Equals(other.TestInterface) == true;
         }
     }
 }

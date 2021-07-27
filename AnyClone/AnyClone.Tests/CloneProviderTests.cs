@@ -237,11 +237,35 @@ namespace AnyClone.Tests
         }
 
         [Test]
+        public void Should_Clone_ObjectWithReadOnlyReferenceField()
+        {
+            var original = new ReadOnlyReferenceFieldObject(new BasicObject(24) {
+                IntValue = 100,
+                BoolValue = true,
+                ByteValue = 240,
+                LongValue = 1000,
+                StringValue = "test"
+            });
+            var cloned = original.Clone();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_ObjectWithReadOnlyValueField()
+        {
+            var original = new ReadOnlyValueFieldObject(100);
+            var cloned = original.Clone();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
         public void ModifiedClone_ComplexObject_ShouldNotBeEqual()
         {
             var original = new ComplexObject(100);
             var cloned = original.Clone();
-            cloned.listOfStrings.Add("new string");
+            cloned.ListOfStrings.Add("new string");
 
             Assert.AreNotEqual(original, cloned);
         }
