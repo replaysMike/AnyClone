@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.1;net40;net45;net46;net461;net462;net47;net48</TargetFrameworks>
+		<TargetFrameworks>netstandard2.1;net40;net45;net46;net461;net462;net47;net48;net5</TargetFrameworks>
 		<Authors>Michael Brown</Authors>
 		<Company>Refactor Software</Company>
 		<Description>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</Description>
@@ -26,7 +26,7 @@
 		<DefineConstants>FEATURE_CUSTOM_VALUETUPLE;FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp3.0' OR '$(TargetFramework)'=='netcoreapp3.1' OR '$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='netstandard2.1'">
+	<PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp3.0' OR '$(TargetFramework)'=='netcoreapp3.1' OR '$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='netstandard2.1' OR '$(TargetFramework)'=='net5'">
 		<DefineConstants>FEATURE_DISABLE_SET_INITONLY</DefineConstants>
 	</PropertyGroup>
 

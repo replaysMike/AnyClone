@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.1;net40;net45;net46;net461;net462;net47;net48</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.1;net40;net45;net46;net461;net462;net47;net48;net5</TargetFrameworks>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
@@ -9,7 +9,7 @@
     <DefineConstants>FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp2.1' OR '$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='net48'">
+  <PropertyGroup Condition="'$(TargetFramework)'=='netcoreapp2.1' OR '$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='net48'  OR '$(TargetFramework)'=='net5'">
     <DefineConstants>FEATURE_CUSTOM_VALUETUPLE;FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
   </PropertyGroup>
 
@@ -21,9 +21,9 @@
     <NoWarn>1701;1702;CS0067</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp2.1'">
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.0" />
-    <PackageReference Include="coverlet.msbuild" Version="2.8.1">
+  <ItemGroup Condition="'$(TargetFramework)'=='netcoreapp2.1' OR '$(TargetFramework)'=='net5'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.10.0" />
+    <PackageReference Include="coverlet.msbuild" Version="3.1.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -31,9 +31,9 @@
 
   <ItemGroup>
     <PackageReference Include="Appveyor.TestLogger" Version="2.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="NUnit" Version="3.12.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="3.16.1">
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="NUnit" Version="3.13.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
