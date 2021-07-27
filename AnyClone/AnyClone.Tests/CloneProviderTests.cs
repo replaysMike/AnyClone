@@ -261,6 +261,15 @@ namespace AnyClone.Tests
         }
 
         [Test]
+        public void Should_Clone_ObjectWithReadOnlyValueProperty()
+        {
+            var original = new ReadOnlyValuePropertyObject(100);
+            var cloned = original.Clone();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
         public void ModifiedClone_ComplexObject_ShouldNotBeEqual()
         {
             var original = new ComplexObject(100);
