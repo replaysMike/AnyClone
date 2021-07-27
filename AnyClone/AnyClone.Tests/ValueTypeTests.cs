@@ -8,7 +8,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_Bool()
         {
-            var original = true;
+            const bool original = true;
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
@@ -17,7 +17,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_Short()
         {
-            var original = (short)3;
+            const short original = (short)3;
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
@@ -26,7 +26,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_Integer()
         {
-            var original = 3;
+            const int original = 3;
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
@@ -35,7 +35,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_Double()
         {
-            var original = 3.1415;
+            const double original = 3.1415;
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
@@ -44,7 +44,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_Decimal()
         {
-            var original = 3.1415M;
+            const decimal original = 3.1415M;
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
@@ -53,7 +53,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_ArrayOfInts()
         {
-            var original = new int[10] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+            var original = new [] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
@@ -62,7 +62,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_2dMultidimensionalArrayOfInts()
         {
-            var original = new int[4, 2] {
+            var original = new [,] {
                 { 1, 2 },
                 { 3, 4 },
                 { 5, 6 },
@@ -77,7 +77,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_3dMultidimensionalArrayOfInts()
         {
-            var original = new int[2, 3, 3] {
+            var original = new [,,] {
                 // row 1
                 { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 } },
                 // row 2
@@ -92,7 +92,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_4dMultidimensionalArrayOfInts()
         {
-            var original = new int[2, 2, 2, 2] {
+            var original = new[,,,] {
                 // row 1
                 { { { 1, 2 }, { 3, 4 } }, { { 5, 6 }, { 7, 8 } } },
                 // row 2
@@ -107,11 +107,11 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_JaggedArrayOfInts()
         {
-            var original = new int[][] {
-                new int[] { 1, 2 },
-                new int[] { 3, 4 },
-                new int[] { 5, 6 },
-                new int[] { 7, 8 }
+            var original = new [] {
+                new [] { 1, 2 },
+                new [] { 3, 4 },
+                new [] { 5, 6 },
+                new [] { 7, 8 }
             };
 
             var cloned = original.Clone();

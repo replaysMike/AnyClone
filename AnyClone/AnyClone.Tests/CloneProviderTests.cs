@@ -47,8 +47,8 @@ namespace AnyClone.Tests
             var original = new ArrayObject
             {
                 ByteArray = new byte[] { 0x01, 0x02, 0x03, 0x04 },
-                IntArray = new int[] { 1, 2, 3, 4 },
-                DoubleArray = new double[] { 1.0, 2.0, 3.0, 4.0, 5.0 },
+                IntArray = new [] { 1, 2, 3, 4 },
+                DoubleArray = new [] { 1.0, 2.0, 3.0, 4.0, 5.0 },
             };
             var cloned = original.Clone();
 
@@ -60,7 +60,7 @@ namespace AnyClone.Tests
         {
             var original = new MultiDimensional2dArrayObject
             {
-                Int2DArray = new int[4, 2] {
+                Int2DArray = new [,] {
                     { 1, 2 },
                     { 3, 4 },
                     { 5, 6 },
@@ -77,7 +77,7 @@ namespace AnyClone.Tests
         {
             var original = new MultiDimensional3dArrayObject
             {
-                Int3DArray = new int[2, 3, 3] {
+                Int3DArray = new [,,] {
                     // row 1
                     { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 } },
                     // row 2
@@ -95,8 +95,8 @@ namespace AnyClone.Tests
             var original = new ArrayObject
             {
                 ByteArray = new byte[] { 0x01, 0x02, 0x03, 0x04 },
-                IntArray = new int[] { 1, 2, 3, 4 },
-                DoubleArray = new double[] { 1.0, 2.0, 3.0, 4.0, 5.0 },
+                IntArray = new [] { 1, 2, 3, 4 },
+                DoubleArray = new [] { 1.0, 2.0, 3.0, 4.0, 5.0 },
             };
             var cloned = original.Clone();
             cloned.ByteArray[2] = 0x10;
