@@ -25,12 +25,6 @@ namespace AnyClone
         private delegate void _memberUpdaterByRef(ref object source, object value);
         private readonly ObjectFactory _objectFactory;
 
-		private readonly ICollection<object> _ignoreAttributes = new List<object> {
-            typeof(IgnoreDataMemberAttribute),
-            typeof(NonSerializedAttribute),
-            "JsonIgnoreAttribute",
-        };
-
         /// <summary>
         /// Cloning error event
         /// </summary>
@@ -50,14 +44,14 @@ namespace AnyClone
         /// <param name="sourceObject">The object to clone</param>
         /// <param name="currentDepth">The current tree depth</param>
         /// <param name="maxDepth">The max tree depth</param>
-        /// <param name="options">The cloning options</param>
+        /// <param name="configuration">Configure custom cloning options</param>
         /// <param name="objectTree">The object tree to prevent cyclical references</param>
         /// <param name="path">The current path being traversed</param>
         /// <param name="ignorePropertiesOrPaths">A list of properties or paths to ignore</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneOptions options, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
+        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneConfiguration configuration, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
         {
-            if (IgnoreObjectName(null, path, options, ignorePropertiesOrPaths))
+            if (IgnoreObjectName(null, path, configuration, ignorePropertiesOrPaths))
                 return null;
 
             if (sourceObject == null)
@@ -77,7 +71,7 @@ namespace AnyClone
             }
 
             // drop any objects we are ignoring by attribute
-            if (typeSupport.Attributes.Any(x => _ignoreAttributes.Contains(x)) && options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes))
+            if (typeSupport.Attributes.Any(x => configuration.IgnorePropertiesWithAttributes.Contains(x.Name)))
                 return null;
 
             // for delegate types, copy them by reference rather than returning null
@@ -151,8 +145,8 @@ namespace AnyClone
                     {
                         foreach (DictionaryEntry item in iDictionary)
                         {
-                            var key = InspectAndCopy(item.Key, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
-                            var value = InspectAndCopy(item.Value, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                            var key = InspectAndCopy(item.Key, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            var value = InspectAndCopy(item.Value, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                             newDictionary.Add(key, value);
                         }
                         success = true;
@@ -186,7 +180,7 @@ namespace AnyClone
                     {
                         foreach (var item in enumerator)
                         {
-                            var element = InspectAndCopy(item, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                            var element = InspectAndCopy(item, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                             addMethod.Invoke(newObject, new[] { element });
                         }
                         success = true;
@@ -215,7 +209,7 @@ namespace AnyClone
                 var flatRowIndex = 0;
                 foreach(var row in sourceArray)
                 {
-                    var newElement = InspectAndCopy(row, currentDepth, maxDepth, options, objectTree, path, ignorePropertiesOrPaths);
+                    var newElement = InspectAndCopy(row, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                     // performance optimization, skip dimensional processing if it's a 1d array
                     if (arrayRank > 1)
                     {
@@ -254,10 +248,10 @@ namespace AnyClone
             foreach (var field in fields)
             {
                 localPath = $"{rootPath}.{field.Name}";
-                if (IgnoreObjectName(field.Name, localPath, options, ignorePropertiesOrPaths, field.CustomAttributes))
+                if (IgnoreObjectName(field.Name, localPath, configuration, ignorePropertiesOrPaths, field.CustomAttributes))
                     continue;
                 // also check the property for ignore, if this is a auto-backing property
-                if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", options, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
+                if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", configuration, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
                     continue;
 #if FEATURE_DISABLE_SET_INITONLY
                 // we can't duplicate init-only fields since .net core 3.0+
@@ -278,7 +272,7 @@ namespace AnyClone
                     newObject.SetFieldValue(field, fieldValue);
                 else if (fieldValue != null)
                 {
-                    var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, options, objectTree, localPath, ignorePropertiesOrPaths);
+                    var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, configuration, objectTree, localPath, ignorePropertiesOrPaths);
                     newObject.SetFieldValue(field, clonedFieldValue);
                 }
             }
@@ -335,18 +329,18 @@ namespace AnyClone
         /// </summary>
         /// <param name="name">Property or field name</param>
         /// <param name="path">Full path to object</param>
-        /// <param name="options">Comparison options</param>
+        /// <param name="configuration">Configure custom cloning options</param>
         /// <param name="ignorePropertiesOrPaths">List of names or paths to ignore</param>
         /// <returns></returns>
-        private bool IgnoreObjectName(string name, string path, CloneOptions options, ICollection<string> ignorePropertiesOrPaths, IEnumerable<CustomAttributeData> attributes = null)
+        private bool IgnoreObjectName(string name, string path, CloneConfiguration configuration, ICollection<string> ignorePropertiesOrPaths, IEnumerable<CustomAttributeData> attributes = null)
         {
             var ignoreByNameOrPath = ignorePropertiesOrPaths?.Contains(name) == true || ignorePropertiesOrPaths?.Contains(path) == true;
             if (ignoreByNameOrPath)
                 return true;
 #if FEATURE_CUSTOM_ATTRIBUTES
-            if (attributes?.Any(x => !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes) && (_ignoreAttributes.Contains(x.AttributeType) || _ignoreAttributes.Contains(x.AttributeType.Name))) == true)
+            if (attributes?.Any(x => configuration.IgnorePropertiesWithAttributes?.Contains(x.AttributeType.Name) == true) == true)
 #else
-            if (attributes?.Any(x => !options.BitwiseHasFlag(CloneOptions.DisableIgnoreAttributes) && (_ignoreAttributes.Contains(x.Constructor.DeclaringType) || _ignoreAttributes.Contains(x.Constructor.DeclaringType.Name))) == true)
+            if (attributes?.Any(x => configuration.IgnorePropertiesWithAttributes?.Contains(x.Constructor.DeclaringType.Name) == true) == true)
 #endif
                 return true;
             return false;

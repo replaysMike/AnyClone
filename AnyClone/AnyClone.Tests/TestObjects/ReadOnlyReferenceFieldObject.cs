@@ -13,6 +13,8 @@ namespace AnyClone.Tests.TestObjects
             _constField = initialValue;
         }
 
+        public override int GetHashCode() => base.GetHashCode();
+
         public override bool Equals(object obj)
         {
             var basicObject = (ReadOnlyReferenceFieldObject)obj;

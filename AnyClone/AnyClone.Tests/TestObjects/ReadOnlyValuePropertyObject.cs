@@ -15,6 +15,8 @@ namespace AnyClone.Tests.TestObjects
             Property2 = initialValue;
         }
 
+        public override int GetHashCode() => base.GetHashCode();
+
         public override bool Equals(object obj)
         {
             var basicObject = (ReadOnlyValueFieldObject)obj;

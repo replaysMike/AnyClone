@@ -12,10 +12,7 @@ namespace AnyClone.Tests.TestObjects
         [JsonIgnore]
         public string StringValue { get; set; }
 
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
+        public override int GetHashCode() => base.GetHashCode();
 
         public override bool Equals(object obj)
         {

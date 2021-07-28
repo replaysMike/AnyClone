@@ -35,6 +35,19 @@ namespace AnyClone
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="sourceObject">The object to clone</param>
+        /// <param name="configuration">Configure custom cloning options</param>
+        /// <returns></returns>
+        public static T Clone<T>(this T sourceObject, CloneConfiguration configuration)
+        {
+            var cloneEngine = new CloneProvider<T>();
+            return cloneEngine.Clone(sourceObject, configuration);
+        }
+
+        /// <summary>
+        /// Clone any object
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="sourceObject">The object to clone</param>
         /// <param name="ignorePropertiesOrPaths">A list of property names or fully qualified paths to ignore</param>
         /// <returns></returns>
         public static T Clone<T>(this T sourceObject, params string[] ignorePropertiesOrPaths)
