@@ -39,9 +39,11 @@ namespace AnyClone
         }
 
         /// <summary>
-        /// (Recursive) Recursive function that inspects an object and its properties/fields and clones it
+        /// Recursive function that inspects an object and its properties/fields and clones it to a new or existing type
         /// </summary>
         /// <param name="sourceObject">The object to clone</param>
+        /// <param name="destinationObject">An existing object to clone values to</param>
+        /// <param name="destinationObjectType">The type of the destination object to clone to</param>
         /// <param name="currentDepth">The current tree depth</param>
         /// <param name="maxDepth">The max tree depth</param>
         /// <param name="configuration">Configure custom cloning options</param>
@@ -49,7 +51,7 @@ namespace AnyClone
         /// <param name="path">The current path being traversed</param>
         /// <param name="ignorePropertiesOrPaths">A list of properties or paths to ignore</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneConfiguration configuration, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
+        private object InspectAndCopy(object sourceObject, object destinationObject, Type destinationObjectType, int currentDepth, int maxDepth, CloneConfiguration configuration, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
         {
             if (IgnoreObjectName(null, path, configuration, ignorePropertiesOrPaths))
                 return null;
@@ -63,6 +65,7 @@ namespace AnyClone
 
             var type = sourceObject.GetType();
             var typeSupport = type.GetExtendedType();
+            var destinationTypeSupport = destinationObjectType?.GetExtendedType() ?? typeSupport;
 
             // always return the original value on value types
             if (typeSupport.IsValueType)
@@ -90,7 +93,7 @@ namespace AnyClone
                 var arrayDimensions = new List<int>();
                 for (var dimension = 0; dimension < arrayRank; dimension++)
                     arrayDimensions.Add(sourceArray.GetLength(dimension));
-                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type, default(TypeRegistry), arrayDimensions.ToArray());
+                newObject = _objectFactory.CreateEmptyObject(destinationTypeSupport.Type, default(TypeRegistry), arrayDimensions.ToArray());
             }
             else if (typeSupport.Type == typeof(string))
             {
@@ -100,7 +103,7 @@ namespace AnyClone
             }
             else
             {
-                newObject = _objectFactory.CreateEmptyObject(typeSupport.Type);
+                newObject = destinationObject ?? _objectFactory.CreateEmptyObject(destinationTypeSupport.Type);
             }
 
             if (newObject == null)
@@ -145,8 +148,8 @@ namespace AnyClone
                     {
                         foreach (DictionaryEntry item in iDictionary)
                         {
-                            var key = InspectAndCopy(item.Key, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
-                            var value = InspectAndCopy(item.Value, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            var key = InspectAndCopy(item.Key, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            var value = InspectAndCopy(item.Value, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                             newDictionary.Add(key, value);
                         }
                         success = true;
@@ -180,7 +183,7 @@ namespace AnyClone
                     {
                         foreach (var item in enumerator)
                         {
-                            var element = InspectAndCopy(item, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            var element = InspectAndCopy(item, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                             addMethod.Invoke(newObject, new[] { element });
                         }
                         success = true;
@@ -209,7 +212,7 @@ namespace AnyClone
                 var flatRowIndex = 0;
                 foreach(var row in sourceArray)
                 {
-                    var newElement = InspectAndCopy(row, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                    var newElement = InspectAndCopy(row, null,null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                     // performance optimization, skip dimensional processing if it's a 1d array
                     if (arrayRank > 1)
                     {
@@ -268,12 +271,18 @@ namespace AnyClone
                 // utilize reflection
                 var fieldTypeSupport = field.Type;
                 var fieldValue = sourceObject.GetFieldValue(field);
-                if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
-                    newObject.SetFieldValue(field, fieldValue);
-                else if (fieldValue != null)
+                var destinationField = newObject.GetField(field.Name, true);
+                // does this field exist on the destination object with the same type?
+                if (destinationField != null && destinationField.FieldType == field.FieldInfo.FieldType)
                 {
-                    var clonedFieldValue = InspectAndCopy(fieldValue, currentDepth, maxDepth, configuration, objectTree, localPath, ignorePropertiesOrPaths);
-                    newObject.SetFieldValue(field, clonedFieldValue);
+                    if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
+                        newObject.SetFieldValue(destinationField, fieldValue);
+                    else if (fieldValue != null)
+                    {
+                        var clonedFieldValue = InspectAndCopy(fieldValue, null, null, currentDepth, maxDepth,
+                            configuration, objectTree, localPath, ignorePropertiesOrPaths);
+                        newObject.SetFieldValue(destinationField, clonedFieldValue);
+                    }
                 }
             }
 

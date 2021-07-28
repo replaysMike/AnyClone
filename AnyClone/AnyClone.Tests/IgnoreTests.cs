@@ -1,4 +1,5 @@
 ﻿using System.Runtime.Serialization;
+using AnyClone.Extensions;
 using AnyClone.Tests.TestObjects;
 using NUnit.Framework;
 using TypeSupport.Extensions;

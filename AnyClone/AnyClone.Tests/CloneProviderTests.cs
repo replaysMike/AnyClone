@@ -1,7 +1,8 @@
-﻿using AnyClone.Tests.TestObjects;
-using NUnit.Framework;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using AnyClone.Extensions;
+using AnyClone.Tests.TestObjects;
+using NUnit.Framework;
 
 namespace AnyClone.Tests
 {
@@ -291,6 +292,57 @@ namespace AnyClone.Tests
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_ToDifferentType()
+        {
+            var original = new BasicObject
+            {
+                BoolValue = true,
+                ByteValue = 0x10,
+                IntValue = 100,
+                LongValue = 10000,
+                StringValue = "Test String"
+            };
+            var cloned = original.CloneTo<DifferentBasicObject>();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_ToDifferentTypeInstance()
+        {
+            var original = new BasicObject(101)
+            {
+                BoolValue = true,
+                ByteValue = 0x10,
+                IntValue = 100,
+                LongValue = 10000,
+                StringValue = "Test String"
+            };
+            var cloned = original.CloneTo(new DifferentBasicObject(99));
+            Assert.AreEqual(original, cloned);
+            Assert.AreEqual(99, cloned.DifferentIntValue);
+        }
+
+        [Test]
+        public void Should_Clone_ToVeryDifferentType()
+        {
+            var original = new BasicObject
+            {
+                BoolValue = true,
+                ByteValue = 0x10,
+                IntValue = 100,
+                LongValue = 10000,
+                StringValue = "Test String"
+            };
+            var cloned = original.CloneTo<VeryDifferentBasicObject>();
+
+            Assert.AreEqual(original.BoolValue, cloned.BoolValue);
+            Assert.AreEqual(original.ByteValue, cloned.ByteValue);
+            Assert.AreEqual(original.StringValue, cloned.StringValue);
+            Assert.AreEqual(0, cloned.UniqueIntProperty);
         }
     }
 }

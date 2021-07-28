@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using AnyClone.Extensions;
+using NUnit.Framework;
 
 namespace AnyClone.Tests
 {
@@ -17,7 +18,7 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_Short()
         {
-            const short original = (short)3;
+            const short original = 3;
             var cloned = original.Clone();
 
             Assert.AreEqual(original, cloned);

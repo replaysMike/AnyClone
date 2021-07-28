@@ -142,5 +142,86 @@ namespace AnyClone.Extensions
             var result = cloneProvider.Clone(sourceObject, options);
             return result;
         }
+
+        /// <summary>
+        /// Clone any object to another type
+        /// </summary>
+        /// <typeparam name="TOut"></typeparam>
+        /// <param name="sourceObject"></param>
+        /// <returns></returns>
+        public static TOut CloneTo<TOut>(this object sourceObject)
+        {
+            var cloneProvider = new CloneProvider<object>();
+            return cloneProvider.CloneTo<object, TOut>(sourceObject);
+        }
+
+        /// <summary>
+        /// Clone any object to another type
+        /// </summary>
+        /// <typeparam name="TOut"></typeparam>
+        /// <param name="sourceObject"></param>
+        /// <param name="configuration">Configure custom cloning options</param>
+        /// <returns></returns>
+        public static TOut CloneTo<TOut>(this object sourceObject, CloneConfiguration configuration)
+        {
+            var cloneProvider = new CloneProvider<object>();
+            return cloneProvider.CloneTo<object, TOut>(sourceObject, configuration);
+        }
+
+        /// <summary>
+        /// Clone any object to another type
+        /// </summary>
+        /// <typeparam name="TIn"></typeparam>
+        /// <typeparam name="TOut"></typeparam>
+        /// <param name="sourceObject"></param>
+        /// <returns></returns>
+        public static TOut CloneTo<TIn, TOut>(this TIn sourceObject)
+        {
+            var cloneProvider = new CloneProvider<TIn>();
+            return cloneProvider.CloneTo<TIn, TOut>(sourceObject);
+        }
+
+        /// <summary>
+        /// Clone any object to another type
+        /// </summary>
+        /// <typeparam name="TIn"></typeparam>
+        /// <typeparam name="TOut"></typeparam>
+        /// <param name="sourceObject"></param>
+        /// <param name="configuration">Configure custom cloning options</param>
+        /// <returns></returns>
+        public static TOut CloneTo<TIn, TOut>(this TIn sourceObject, CloneConfiguration configuration)
+        {
+            var cloneProvider = new CloneProvider<TIn>();
+            return cloneProvider.CloneTo<TIn, TOut>(sourceObject, configuration);
+        }
+
+        /// <summary>
+        /// Clone any object to another type and provide an existing instance to clone to
+        /// </summary>
+        /// <typeparam name="TIn"></typeparam>
+        /// <typeparam name="TOut"></typeparam>
+        /// <param name="sourceObject"></param>
+        /// <param name="destinationInstance"></param>
+        /// <returns></returns>
+        public static TOut CloneTo<TIn, TOut>(this TIn sourceObject, TOut destinationInstance)
+        {
+            var cloneProvider = new CloneProvider<TIn>();
+            return cloneProvider.CloneTo(sourceObject, destinationInstance);
+        }
+
+        /// <summary>
+        /// Clone any object to another type and provide an existing instance to clone to
+        /// </summary>
+        /// <typeparam name="TIn"></typeparam>
+        /// <typeparam name="TOut"></typeparam>
+        /// <param name="sourceObject"></param>
+        /// <param name="destinationInstance"></param>
+        /// <param name="configuration">Configure custom cloning options</param>
+        /// <returns></returns>
+        public static TOut CloneTo<TIn, TOut>(this TIn sourceObject, TOut destinationInstance, CloneConfiguration configuration)
+        {
+            var cloneProvider = new CloneProvider<TIn>();
+            return cloneProvider.CloneTo(sourceObject, destinationInstance, configuration);
+        }
     }
 }

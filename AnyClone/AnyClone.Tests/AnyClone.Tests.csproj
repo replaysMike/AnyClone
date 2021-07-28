@@ -39,7 +39,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="TypeSupport" Version="1.1.7" />
+		<PackageReference Include="TypeSupport" Version="1.1.8" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -34,7 +34,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.18.2" />
-		<PackageReference Include="TypeSupport" Version="1.1.7" PrivateAssets="all" />
+		<PackageReference Include="TypeSupport" Version="1.1.8" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="all" />
 	</ItemGroup>
 
