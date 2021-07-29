@@ -16,6 +16,7 @@
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<LangVersion>latest</LangVersion>
+		<PackageIcon>any.png</PackageIcon>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\AnyCloneStrongNameKey.snk</AssemblyOriginatorKeyFile>
 	</PropertyGroup>
