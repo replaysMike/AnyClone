@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using AnyClone.Extensions;
+using AnyClone;
 using AnyClone.Tests.TestObjects;
 using NUnit.Framework;
 

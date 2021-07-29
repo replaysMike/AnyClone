@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq.Expressions;
 
-namespace AnyClone.Extensions
+namespace AnyClone
 {
     public static class CloneExtensions
     {

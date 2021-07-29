@@ -1,4 +1,4 @@
-﻿using AnyClone.Extensions;
+﻿using AnyClone;
 using AnyClone.Tests.TestObjects;
 using NUnit.Framework;
 
