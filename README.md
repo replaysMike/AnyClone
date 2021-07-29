@@ -22,7 +22,7 @@ PM> Install-Package AnyClone
 ## Usage
 
 ```csharp
-using AnyClone;
+using AnyClone.Extensions;
 
 var originalObject = new SomeComplexTypeWithDeepStructure();
 var myClonedObject = originalObject.Clone();
@@ -30,7 +30,7 @@ var myClonedObject = originalObject.Clone();
 
 Capture Errors
 ```csharp
-using AnyClone;
+using AnyClone.Extensions;
 
 var originalObject = new SomeComplexTypeWithDeepStructure();
 // capture errors found with your object where impossible situations occur, and add [IgnoreDataMember] to those properties/fields.
@@ -43,6 +43,7 @@ var myClonedObject = originalObject.Clone((ex, path, property, obj) => {
 
 Get differences between cloned objects using [AnyDiff](https://github.com/replaysMike/AnyDiff)
 ```csharp
+using AnyClone.Extensions;
 using AnyDiff;
 
 var object1 = new MyComplexObject(1, "A string");
@@ -59,7 +60,21 @@ Assert.AreEqual(diff.Count, 1);
 ```
 
 ### Ignoring Properties/Fields
-There are unfortunately a few situations that can't be resolved, such as cloning delegates, events etc. Fortunately, and for most scenarios you don't want these anyways so you can use any of the standard supported attributes to ignore these properties: `[IgnoreDataMember]`, `[JsonIgnore]`, and `[NonSerialized]` (fields only, just use `[IgnoreDataMember]` and save yourself the hassle).
+There are unfortunately a few situations that can't be resolved, such as cloning delegates, events etc. Fortunately, you can specify attributes that AnyClone will skip properties decorated with them. By default, AnyClone will ignore properties decorated with the following attributes: `IgnoreDataMemberAttribute, NonSerializedAttribute, JsonIgnoreAttribute`. If you wish to disable this behavior, or provide other attributes that you wish to decorate properties to ignore you can provide a custom CloneConfiguration:
+
+```csharp
+using AnyClone;
+using AnyClone.Extensions;
+
+var originalObject = new SomeComplexTypeWithDeepStructure();
+var myClonedObject = originalObject.Clone(CloneConfiguration.UsingAttributeNamesToIgnore("IgnoreDataMemberAttribute", "MyCustomAttribute"));
+```
+
+Both attribute names and attribute types can be specified:
+```csharp
+var myClonedObject = originalObject.Clone(CloneConfiguration.UsingAttributeNamesToIgnore("IgnoreDataMemberAttribute", "MyCustomAttribute"));
+var myOtherClonedObject = originalObject.Clone(CloneConfiguration.UsingAttributesToIgnore(typeof(IgnoreDataMemberAttribute), typeof(MyCustomAttribute)));
+```
 
 ### Other Applications
 
