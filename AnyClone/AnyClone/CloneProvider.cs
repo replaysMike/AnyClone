@@ -169,36 +169,59 @@ namespace AnyClone
             else if (typeSupport.IsEnumerable && !typeSupport.IsArray)
             {
                 // clone enumerable elements
-                var addMethod = typeSupport.Type.GetMethod("Add");
-                if (addMethod == null)
-                    addMethod = typeSupport.Type.GetMethod("Enqueue");
-                if (addMethod == null)
-                    addMethod = typeSupport.Type.GetMethod("Push");
-                if (addMethod == null)
-                    throw new TypeException($"Unsupported IEnumerable type: {typeSupport.Type.Name}");
-                var enumerator = (IEnumerable)sourceObject;
-                var success = false;
-                var retryCount = 0;
-                while (!success && retryCount < 10)
+                var enumerable = (IEnumerable)sourceObject;
+                bool hasEntries;
+                if (typeSupport.IsCollection)
+                    hasEntries = ((ICollection)sourceObject).Count > 0;
+                else
                 {
-                    try
+                    hasEntries = enumerable.Cast<object>().Any();
+                }
+                if (hasEntries)
+                {
+                    var addMethod = typeSupport.Type.GetMethod("Add");
+                    if (addMethod == null)
                     {
-                        foreach (var item in enumerator)
+                        addMethod = typeSupport.Type.GetMethod("Enqueue");
+                        if (addMethod == null)
                         {
-                            var element = InspectAndCopy(item, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
-                            addMethod.Invoke(newObject, new[] { element });
+                            addMethod = typeSupport.Type.GetMethod("Push");
+                            if (addMethod == null)
+                            {
+                                addMethod = typeSupport.Methods.FirstOrDefault(x => x.Name.StartsWith("Add"));
+                                if (addMethod == null)
+                                    throw new TypeException(
+                                        $"Unsupported custom IEnumerable type named {typeSupport.Type.Name}. No known Add method could be identified!");
+                            }
                         }
-                        success = true;
                     }
-                    catch (InvalidOperationException)
+
+                    var success = false;
+                    var retryCount = 0;
+                    while (!success && retryCount < 10)
                     {
-                        // if the collection was modified during enumeration, stop re-initialize and retry
-                        success = false;
-                        retryCount++;
-                        var clearMethod = typeSupport.Type.GetMethod("Clear");
-                        clearMethod?.Invoke(newObject, null);
+                        try
+                        {
+                            foreach (var item in enumerable)
+                            {
+                                var element = InspectAndCopy(item, null, null, currentDepth, maxDepth, configuration,
+                                    objectTree, path, ignorePropertiesOrPaths);
+                                addMethod.Invoke(newObject, new[] {element});
+                            }
+
+                            success = true;
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // if the collection was modified during enumeration, stop re-initialize and retry
+                            success = false;
+                            retryCount++;
+                            var clearMethod = typeSupport.Type.GetMethod("Clear");
+                            clearMethod?.Invoke(newObject, null);
+                        }
                     }
                 }
+
                 return newObject;
             }
 

@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.Serialization;
+using System.Security.Policy;
 using System.Text;
 using NUnit.Framework;
 
@@ -35,6 +36,10 @@ namespace AnyClone.Tests.TestObjects
 
         [NotMapped]
         public bool SkipVersionIncrement { get; set; }
+
+#if NET45_OR_GREATER
+        public Evidence EvidenceCollection { get; set; } = new Evidence();
+#endif
 
         public int? ExternalOrderVersion { get; set; }
 
