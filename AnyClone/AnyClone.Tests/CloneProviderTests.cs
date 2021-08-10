@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using AnyClone;
 using AnyClone.Tests.TestObjects;
 using NUnit.Framework;
@@ -344,5 +346,33 @@ namespace AnyClone.Tests
             Assert.AreEqual(original.StringValue, cloned.StringValue);
             Assert.AreEqual(0, cloned.UniqueIntProperty);
         }
+
+        [Test]
+        public void Should_Clone_AttributesWithParams()
+        {
+            var original = new BasicObjectWithParamAttributes();
+            var cloned = original.Clone();
+
+            Assert.IsNotNull(cloned);
+        }
+
+#if NET45_OR_GREATER || NET5_0_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+
+        [Test]
+        public void Should_Clone_BuyObject()
+        {
+            // this test represents cloning of a very complex class
+            var original = new BuyObject();
+            var cloned = original.Clone();
+            Func<BuyObject, int> func = i => 100;
+            Expression<Func<BuyObject, int>> newUnits = i => func(i);
+            cloned.Units = newUnits;
+
+            Assert.IsNotNull(cloned);
+            Assert.AreEqual(newUnits, cloned.Units);
+            Assert.AreNotEqual(newUnits, original.Units);
+        }
+
+#endif
     }
 }

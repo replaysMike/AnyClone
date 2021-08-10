@@ -24,6 +24,8 @@ namespace AnyClone
 
         private delegate void _memberUpdaterByRef(ref object source, object value);
         private readonly ObjectFactory _objectFactory;
+        private MethodInfo _memberwiseCloneMethod = typeof(object)
+            .GetMethod("MemberwiseClone", BindingFlags.NonPublic | BindingFlags.Instance);
 
         /// <summary>
         /// Cloning error event
@@ -241,6 +243,13 @@ namespace AnyClone
                     flatRowIndex++;
                 }
                 return newArray;
+            }
+
+            if (typeSupport.IsExpression)
+            {
+                // utilize MemberwiseClone for expressions
+                var newExpression = _memberwiseCloneMethod.Invoke(sourceObject, null);
+                return newExpression;
             }
 
             var fields = sourceObject.GetFields(FieldOptions.AllWritable);

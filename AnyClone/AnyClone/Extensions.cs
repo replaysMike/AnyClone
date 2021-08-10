@@ -135,8 +135,7 @@ namespace AnyClone
         /// <returns></returns>
         public static T Clone<T>(this T sourceObject, CloneOptions options, Action<Exception, string, object, object> onErrorCallback)
         {
-            var cloneProvider = new CloneProvider<T>
-            {
+            var cloneProvider = new CloneProvider<T> {
                 OnCloneError = onErrorCallback
             };
             var result = cloneProvider.Clone(sourceObject, options);
