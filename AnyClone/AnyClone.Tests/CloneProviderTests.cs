@@ -374,5 +374,13 @@ namespace AnyClone.Tests
         }
 
 #endif
+
+        [Test]
+        public void Should_Clone_Logger()
+        {
+            var original = NLog.LogLevel.Trace;
+            var cloned = original.Clone();
+            Assert.IsNotNull(cloned);
+        }
     }
 }

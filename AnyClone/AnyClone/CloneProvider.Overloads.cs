@@ -12,7 +12,7 @@ namespace AnyClone
         /// <param name="sourceObject">The object to clone</param>
         /// <returns></returns>
         public T Clone(T sourceObject)
-            => (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty);
+            => (T)InspectAndCopy(sourceObject, 0, CloneConfiguration.DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty);
 
         /// <summary>
         /// Clone any objects
@@ -21,7 +21,7 @@ namespace AnyClone
         /// <param name="options">The cloning options</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneOptions options)
-            => (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, CloneConfiguration.CreateFromOptions(options), new Dictionary<int, object>(), string.Empty);
+            => (T)InspectAndCopy(sourceObject, 0, CloneConfiguration.DefaultMaxDepth, CloneConfiguration.CreateFromOptions(options), new Dictionary<int, object>(), string.Empty);
 
         /// <summary>
         /// Clone any object
@@ -30,7 +30,7 @@ namespace AnyClone
         /// <param name="configuration">Configure custom cloning options</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneConfiguration configuration)
-            => (T)InspectAndCopy(sourceObject, 0, DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty);
+            => (T)InspectAndCopy(sourceObject, 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty);
 
         /// <summary>
         /// Clone any objects
@@ -90,7 +90,7 @@ namespace AnyClone
         /// <param name="sourceObject"></param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject)
-            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty, null);
+            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, CloneConfiguration.DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty, null);
 
         /// <summary>
         /// Clone any object to another type
@@ -101,7 +101,7 @@ namespace AnyClone
         /// <param name="configuration">Configure custom cloning options</param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject, CloneConfiguration configuration)
-            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty, null);
+            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty, null);
 
         /// <summary>
         /// Clone any object to another type and provide an existing instance to clone to
@@ -112,7 +112,7 @@ namespace AnyClone
         /// <param name="destinationInstance">The existing instance to clone to</param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject, TOut destinationInstance)
-            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty, null);
+            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, CloneConfiguration.DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty, null);
 
         /// <summary>
         /// Clone any object to another type and provide an existing instance to clone to
@@ -124,7 +124,7 @@ namespace AnyClone
         /// <param name="configuration">Configure custom cloning options</param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject, TOut destinationInstance, CloneConfiguration configuration)
-            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty, null);
+            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty, null);
 
         /// <summary>
         /// (Recursive) Recursive function that inspects an object and its properties/fields and clones it

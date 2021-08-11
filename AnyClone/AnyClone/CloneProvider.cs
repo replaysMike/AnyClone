@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -17,11 +18,6 @@ namespace AnyClone
     /// <typeparam name="T"></typeparam>
     public partial class CloneProvider<T>
     {
-        /// <summary>
-        /// Set the maximum recursion depth
-        /// </summary>
-        public const int DefaultMaxDepth = 32;
-
         private delegate void _memberUpdaterByRef(ref object source, object value);
         private readonly ObjectFactory _objectFactory;
         private MethodInfo _memberwiseCloneMethod = typeof(object)
@@ -63,10 +59,19 @@ namespace AnyClone
 
             // ensure we don't go too deep if specified
             if (maxDepth > 0 && currentDepth >= maxDepth)
-                return null;
+                throw new StackOverflowException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.UseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}");
 
             var type = sourceObject.GetType();
-            var typeSupport = type.GetExtendedType();
+            ExtendedType typeSupport;
+            try
+            {
+                typeSupport = type.GetExtendedType();
+            }
+            // certain attributes such as .net remoting SoapTypeAttribute can cause issues trying to inspect. Possibly a framework bug with reflection
+            catch (CustomAttributeFormatException)
+            {
+                return sourceObject;
+            }
             var destinationTypeSupport = destinationObjectType?.GetExtendedType() ?? typeSupport;
 
             // always return the original value on value types
@@ -118,17 +123,19 @@ namespace AnyClone
             // we use this hashcode method as it does not use any custom hashcode handlers the object might implement
             if (!typeSupport.IsValueType)
             {
-                var hashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
-                if (objectTree.ContainsKey(hashCode))
+                var implementationHashCode = sourceObject.GetHashCode();
+                var systemGeneratedHashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
+                var useHashCode = configuration.UseCustomHashCodes ? implementationHashCode : systemGeneratedHashCode;
+                if (objectTree.ContainsKey(useHashCode))
                 {
-                    if (objectTree[hashCode].GetType() == type)
-                        return objectTree[hashCode];
+                    if (objectTree[useHashCode].GetType() == type)
+                        return objectTree[useHashCode];
 
                 }
                 else
                 {
                     // ensure we can refer back to the reference for this object
-                    objectTree.Add(hashCode, newObject);
+                    objectTree.Add(useHashCode, newObject);
                 }
             }
 
@@ -179,6 +186,14 @@ namespace AnyClone
                 }
                 if (hasEntries)
                 {
+#if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER
+                    if (typeSupport.Implements(typeof(IReadOnlyCollection<>)))
+                    {
+                        // return as-is, since they can't be modified anyways
+                        return sourceObject;
+                    }
+#endif
+
                     var addMethod = typeSupport.Type.GetMethod("Add");
                     if (addMethod == null)
                     {
@@ -206,7 +221,7 @@ namespace AnyClone
                             {
                                 var element = InspectAndCopy(item, null, null, currentDepth, maxDepth, configuration,
                                     objectTree, path, ignorePropertiesOrPaths);
-                                addMethod.Invoke(newObject, new[] {element});
+                                addMethod.Invoke(newObject, new[] { element });
                             }
 
                             success = true;
@@ -235,9 +250,9 @@ namespace AnyClone
                 for (var dimension = 0; dimension < arrayRank; dimension++)
                     arrayDimensions.Add(newArray.GetLength(dimension));
                 var flatRowIndex = 0;
-                foreach(var row in sourceArray)
+                foreach (var row in sourceArray)
                 {
-                    var newElement = InspectAndCopy(row, null,null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                    var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
                     // performance optimization, skip dimensional processing if it's a 1d array
                     if (arrayRank > 1)
                     {
@@ -291,7 +306,7 @@ namespace AnyClone
 #if FEATURE_DISABLE_SET_INITONLY
                 // we can't duplicate init-only fields since .net core 3.0+
                 // make use of IL to get around this limitation
-                if (field.FieldInfo.IsInitOnly)
+                if (field.FieldInfo.IsInitOnly && configuration.AllowCloningOfReadOnlyEntities)
                 {
                     var updater = GetWriterForField(field);
                     var updateFieldValue = sourceObject.GetFieldValue(field);
@@ -299,6 +314,9 @@ namespace AnyClone
                     continue;
                 }
 #endif
+                // only copy readonly fields if we allow as such
+                if (field.FieldInfo.IsInitOnly && !configuration.AllowCloningOfReadOnlyEntities)
+                    continue;
 
                 // utilize reflection
                 var fieldTypeSupport = field.Type;
@@ -403,7 +421,7 @@ namespace AnyClone
                     case MemberExpression m:
                         name = m.Member.Name;
                         break;
-                    case UnaryExpression {Operand: MemberExpression m}:
+                    case UnaryExpression { Operand: MemberExpression m }:
                         name = m.Member.Name;
                         break;
                     default:

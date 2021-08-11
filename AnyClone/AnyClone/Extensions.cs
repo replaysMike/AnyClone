@@ -80,7 +80,7 @@ namespace AnyClone
         public static T Clone<T>(this T sourceObject, CloneOptions options, params string[] ignorePropertiesOrPaths)
         {
             var cloneProvider = new CloneProvider<T>();
-            return cloneProvider.Clone(sourceObject, options, CloneProvider<T>.DefaultMaxDepth, ignorePropertiesOrPaths);
+            return cloneProvider.Clone(sourceObject, options, CloneConfiguration.DefaultMaxDepth, ignorePropertiesOrPaths);
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace AnyClone
         public static T Clone<T>(this T sourceObject, CloneConfiguration configuration, params string[] ignorePropertiesOrPaths)
         {
             var cloneProvider = new CloneProvider<T>();
-            return cloneProvider.Clone(sourceObject, configuration, CloneProvider<T>.DefaultMaxDepth, ignorePropertiesOrPaths);
+            return cloneProvider.Clone(sourceObject, configuration, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, ignorePropertiesOrPaths);
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace AnyClone
         public static T Clone<T>(this T sourceObject, CloneOptions options, params Expression<Func<T, object>>[] ignoreProperties)
         {
             var cloneProvider = new CloneProvider<T>();
-            return cloneProvider.Clone(sourceObject, options, CloneProvider<T>.DefaultMaxDepth, ignoreProperties);
+            return cloneProvider.Clone(sourceObject, options, CloneConfiguration.DefaultMaxDepth, ignoreProperties);
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace AnyClone
         public static T Clone<T>(this T sourceObject, CloneConfiguration configuration, params Expression<Func<T, object>>[] ignoreProperties)
         {
             var cloneProvider = new CloneProvider<T>();
-            return cloneProvider.Clone(sourceObject, configuration, CloneProvider<T>.DefaultMaxDepth, ignoreProperties);
+            return cloneProvider.Clone(sourceObject, configuration, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, ignoreProperties);
         }
 
         /// <summary>

@@ -10,6 +10,11 @@ namespace AnyClone
     public class CloneConfiguration
     {
         /// <summary>
+        /// Set the maximum recursion depth
+        /// </summary>
+        public const int DefaultMaxDepth = 64;
+
+        /// <summary>
         /// Ignore properties decorated with a custom list of attribute names
         /// Default: ["IgnoreDataMemberAttribute", "NonSerializedAttribute", "JsonIgnoreAttribute"]
         /// </summary>
@@ -18,6 +23,24 @@ namespace AnyClone
             "NonSerializedAttribute",
             "JsonIgnoreAttribute",
         };
+
+        /// <summary>
+        /// True to allow cloning of readonly fields and properties
+        /// Default: true
+        /// </summary>
+        public bool AllowCloningOfReadOnlyEntities { get; set; } = true;
+
+        /// <summary>
+        /// True to use custom hashcode implementations for reference tracking
+        /// Default: false
+        /// </summary>
+        public bool UseCustomHashCodes { get; set; } = false;
+
+        /// <summary>
+        /// Set the maximum recursion depth for cloning fields and properties
+        /// Default: 32
+        /// </summary>
+        public int MaxDepth { get; set; } = DefaultMaxDepth;
 
         /// <summary>
         /// Create a clone configuration using a list of attributes to ignore
@@ -37,6 +60,16 @@ namespace AnyClone
         public static CloneConfiguration UsingAttributeNamesToIgnore(params string[] attributeNamesToIgnore)
             => new() {
                 IgnorePropertiesWithAttributes = attributeNamesToIgnore
+            };
+
+        /// <summary>
+        /// Create a clone configuration that does not allow readonly fields and properties to be cloned
+        /// </summary>
+        /// <param name="attributeNamesToIgnore"></param>
+        /// <returns></returns>
+        public static CloneConfiguration SkipReadOnlyMembers()
+            => new() {
+                AllowCloningOfReadOnlyEntities = false
             };
 
         internal static CloneConfiguration CreateFromOptions(CloneOptions options)
