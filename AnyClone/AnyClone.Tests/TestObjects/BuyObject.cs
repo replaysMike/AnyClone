@@ -1,4 +1,4 @@
-﻿#if NET45_OR_GREATER || NET5_0_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+﻿#if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

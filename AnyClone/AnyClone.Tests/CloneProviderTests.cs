@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using AnyClone;
@@ -356,7 +357,30 @@ namespace AnyClone.Tests
             Assert.IsNotNull(cloned);
         }
 
-#if NET45_OR_GREATER || NET5_0_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+        [Test]
+        public void Should_Clone_ReadOnlyCollection()
+        {
+            var original = new List<int> { 1, 2, 3, 4, 5 }.AsReadOnly();
+            var cloned = original.Clone();
+
+            Assert.IsNotNull(cloned);
+        }
+
+#if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER
+
+        [Test]
+        public void Should_Clone_ReadOnlyDictionary()
+        {
+            var values = new Dictionary<int, bool> { { 1, true }, { 2, false }, { 3, true }, { 4, false }, { 5, true } };
+            var original = new ReadOnlyDictionary<int, bool>(values);
+            var cloned = original.Clone();
+
+            Assert.IsNotNull(cloned);
+        }
+
+#endif
+
+#if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER
 
         [Test]
         public void Should_Clone_BuyObject()
@@ -379,7 +403,7 @@ namespace AnyClone.Tests
         public void Should_Clone_Logger()
         {
             var original = NLog.LogLevel.Trace;
-            var cloned = original.Clone();
+            var cloned = original.Clone(CloneConfiguration.SkipReadOnlyMembers());
             Assert.IsNotNull(cloned);
         }
     }

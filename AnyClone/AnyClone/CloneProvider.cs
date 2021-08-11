@@ -59,7 +59,7 @@ namespace AnyClone
 
             // ensure we don't go too deep if specified
             if (maxDepth > 0 && currentDepth >= maxDepth)
-                throw new StackOverflowException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.UseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}");
+                throw new CloneException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.UseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}. Check the Path in the exception for diagnosing the cause.", path);
 
             var type = sourceObject.GetType();
             ExtendedType typeSupport;
@@ -187,7 +187,8 @@ namespace AnyClone
                 if (hasEntries)
                 {
 #if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER
-                    if (typeSupport.Implements(typeof(IReadOnlyCollection<>)))
+                    var readOnlyCollectionTypes = new[] { typeof(ReadOnlyCollection<>), typeof(ReadOnlyDictionary<,>) };
+                    if (type.IsGenericType && readOnlyCollectionTypes.Contains(type.GetGenericTypeDefinition()))
                     {
                         // return as-is, since they can't be modified anyways
                         return sourceObject;
@@ -205,8 +206,10 @@ namespace AnyClone
                             {
                                 addMethod = typeSupport.Methods.FirstOrDefault(x => x.Name.StartsWith("Add"));
                                 if (addMethod == null)
-                                    throw new TypeException(
-                                        $"Unsupported custom IEnumerable type named {typeSupport.Type.Name}. No known Add method could be identified!");
+                                {
+                                    // as a backup, try utilizing memberwise clone
+                                    return _memberwiseCloneMethod.Invoke(sourceObject, null);
+                                }
                             }
                         }
                     }

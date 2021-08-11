@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace AnyClone
 {
     /// <summary>
     /// Type exception
     /// </summary>
+    [Serializable]
     public class TypeException : Exception
     {
         /// <summary>
