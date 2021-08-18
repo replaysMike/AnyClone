@@ -12,7 +12,10 @@ namespace AnyClone
         /// <param name="sourceObject">The object to clone</param>
         /// <returns></returns>
         public T Clone(T sourceObject)
-            => (T)InspectAndCopy(sourceObject, 0, CloneConfiguration.DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty);
+        {
+            var configuration = new CloneConfiguration();
+            return (T)InspectAndCopy(sourceObject, 0, CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty);
+        }
 
         /// <summary>
         /// Clone any objects
@@ -21,7 +24,10 @@ namespace AnyClone
         /// <param name="options">The cloning options</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneOptions options)
-            => (T)InspectAndCopy(sourceObject, 0, CloneConfiguration.DefaultMaxDepth, CloneConfiguration.CreateFromOptions(options), new Dictionary<int, object>(), string.Empty);
+        {
+            var configuration = CloneConfiguration.CreateFromOptions(options);
+            return (T)InspectAndCopy(sourceObject, 0, CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty);
+        }
 
         /// <summary>
         /// Clone any object
@@ -30,17 +36,22 @@ namespace AnyClone
         /// <param name="configuration">Configure custom cloning options</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneConfiguration configuration)
-            => (T)InspectAndCopy(sourceObject, 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty);
+        {
+            return (T)InspectAndCopy(sourceObject, 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty);
+        }
 
         /// <summary>
-        /// Clone any objects
+        /// Clone any object
         /// </summary>
         /// <param name="sourceObject">The object to clone</param>
         /// <param name="options">The cloning options</param>
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth)
-            => (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, CloneConfiguration.CreateFromOptions(options), new Dictionary<int, object>(), string.Empty);
+        {
+            var configuration = CloneConfiguration.CreateFromOptions(options);
+            return (T)InspectAndCopy(sourceObject, 0, maxTreeDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty);
+        }
 
         /// <summary>
         /// Clone any object
@@ -50,7 +61,11 @@ namespace AnyClone
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth, params string[] ignorePropertiesOrPaths)
-            => (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, CloneConfiguration.CreateFromOptions(options), new Dictionary<int, object>(), string.Empty, ignorePropertiesOrPaths);
+        {
+            var configuration = CloneConfiguration.CreateFromOptions(options);
+            return (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, ignorePropertiesOrPaths);
+        }
+
 
         /// <summary>
         /// Clone any object
@@ -60,7 +75,7 @@ namespace AnyClone
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneConfiguration configuration, int maxTreeDepth, params string[] ignorePropertiesOrPaths)
-            => (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, configuration, new Dictionary<int, object>(), string.Empty, ignorePropertiesOrPaths);
+            => (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, ignorePropertiesOrPaths);
 
         /// <summary>
         /// Clone any object
@@ -70,7 +85,11 @@ namespace AnyClone
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneOptions options, int maxTreeDepth, params Expression<Func<T, object>>[] ignoreProperties)
-            => (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, CloneConfiguration.CreateFromOptions(options), new Dictionary<int, object>(), string.Empty, ConvertToPropertyNameList(ignoreProperties));
+
+        {
+            var configuration = CloneConfiguration.CreateFromOptions(options);
+            return (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, ConvertToPropertyNameList(ignoreProperties));
+        }
 
         /// <summary>
         /// Clone any object
@@ -80,7 +99,7 @@ namespace AnyClone
         /// <param name="maxTreeDepth">The maximum tree depth</param>
         /// <returns></returns>
         public T Clone(T sourceObject, CloneConfiguration configuration, int maxTreeDepth, params Expression<Func<T, object>>[] ignoreProperties)
-            => (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, configuration, new Dictionary<int, object>(), string.Empty, ConvertToPropertyNameList(ignoreProperties));
+            => (T)InspectAndCopy(sourceObject, null, null, 0, maxTreeDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, ConvertToPropertyNameList(ignoreProperties));
 
         /// <summary>
         /// Clone any object to another type
@@ -90,7 +109,10 @@ namespace AnyClone
         /// <param name="sourceObject"></param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject)
-            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, CloneConfiguration.DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty, null);
+        {
+            var configuration = new CloneConfiguration();
+            return (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, null);
+        }
 
         /// <summary>
         /// Clone any object to another type
@@ -101,7 +123,7 @@ namespace AnyClone
         /// <param name="configuration">Configure custom cloning options</param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject, CloneConfiguration configuration)
-            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty, null);
+            => (TOut)InspectAndCopy(sourceObject, null, typeof(TOut), 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, null);
 
         /// <summary>
         /// Clone any object to another type and provide an existing instance to clone to
@@ -112,7 +134,10 @@ namespace AnyClone
         /// <param name="destinationInstance">The existing instance to clone to</param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject, TOut destinationInstance)
-            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, CloneConfiguration.DefaultMaxDepth, new CloneConfiguration(), new Dictionary<int, object>(), string.Empty, null);
+        {
+            var configuration = new CloneConfiguration();
+            return (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, null);
+        }
 
         /// <summary>
         /// Clone any object to another type and provide an existing instance to clone to
@@ -124,7 +149,7 @@ namespace AnyClone
         /// <param name="configuration">Configure custom cloning options</param>
         /// <returns></returns>
         public TOut CloneTo<TIn, TOut>(TIn sourceObject, TOut destinationInstance, CloneConfiguration configuration)
-            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new Dictionary<int, object>(), string.Empty, null);
+            => (TOut)InspectAndCopy(sourceObject, destinationInstance, typeof(TOut), 0, configuration?.MaxDepth ?? CloneConfiguration.DefaultMaxDepth, configuration, new ObjectTreeReferenceTracker(configuration.ReferenceTrackingType, configuration.AllowUseCustomHashCodes), string.Empty, null);
 
         /// <summary>
         /// (Recursive) Recursive function that inspects an object and its properties/fields and clones it
@@ -136,7 +161,7 @@ namespace AnyClone
         /// <param name="objectTree">The object tree to prevent cyclical references</param>
         /// <param name="path">The current path being traversed</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneConfiguration configuration, IDictionary<int, object> objectTree, string path)
+        private object InspectAndCopy(object sourceObject, int currentDepth, int maxDepth, CloneConfiguration configuration, ObjectTreeReferenceTracker objectTree, string path)
             => InspectAndCopy(sourceObject, null, null, currentDepth, maxDepth, configuration, objectTree, path, null);
     }
 }

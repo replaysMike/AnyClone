@@ -259,9 +259,18 @@ namespace AnyClone.Tests
         public void Should_Clone_ObjectWithReadOnlyValueField()
         {
             var original = new ReadOnlyValueFieldObject(100);
-            var cloned = original.Clone();
+            var cloned = original.Clone(new CloneConfiguration { AllowCloningOfReadOnlyEntities = true });
 
             Assert.AreEqual(original, cloned);
+        }
+
+         [Test]
+        public void Should_NotClone_ObjectWithReadOnlyValueField()
+        {
+            var original = new ReadOnlyValueFieldObject(100);
+            var cloned = original.Clone(new CloneConfiguration { AllowCloningOfReadOnlyEntities = false });
+
+            Assert.AreNotEqual(original, cloned);
         }
 
         [Test]
@@ -404,6 +413,22 @@ namespace AnyClone.Tests
         {
             var original = NLog.LogLevel.Trace;
             var cloned = original.Clone(CloneConfiguration.SkipReadOnlyMembers());
+            Assert.IsNotNull(cloned);
+        }
+
+        [Test]
+        public void Should_Clone_Logger_LineEndingMode()
+        {
+            var original = NLog.Targets.LineEndingMode.CRLF;
+            var cloned = original.Clone();
+            Assert.IsNotNull(cloned);
+        }
+
+        [Test]
+        public void Should_Clone_StaticInitializer()
+        {
+            var original = new StaticInitializerRecursive();
+            var cloned = original.Clone();
             Assert.IsNotNull(cloned);
         }
     }

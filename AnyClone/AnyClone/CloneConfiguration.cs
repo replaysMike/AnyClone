@@ -14,6 +14,8 @@ namespace AnyClone
         /// </summary>
         public const int DefaultMaxDepth = 64;
 
+        public const ReferenceTrackingType DefaultReferenceTrackingType = ReferenceTrackingType.ObjectIdGenerator;
+
         /// <summary>
         /// Ignore properties decorated with a custom list of attribute names
         /// Default: ["IgnoreDataMemberAttribute", "NonSerializedAttribute", "JsonIgnoreAttribute"]
@@ -31,10 +33,22 @@ namespace AnyClone
         public bool AllowCloningOfReadOnlyEntities { get; set; } = true;
 
         /// <summary>
-        /// True to use custom hashcode implementations for reference tracking
+        /// True to use custom hashcode implementations for reference tracking, false to use the system generated hashcode
+        /// Default: true
+        /// </summary>
+        public bool AllowUseCustomHashCodes { get; set; } = true;
+
+        /// <summary>
+        /// True to respect custom implementations of IClonable
         /// Default: false
         /// </summary>
-        public bool UseCustomHashCodes { get; set; } = false;
+        public bool AllowIClonableImplementations { get; set; } = false;
+
+        /// <summary>
+        /// Specify the type of object instance reference tracking used
+        /// Default: <seealso cref="DefaultReferenceTrackingType"/>
+        /// </summary>
+        public ReferenceTrackingType ReferenceTrackingType { get; set; } = DefaultReferenceTrackingType;
 
         /// <summary>
         /// Set the maximum recursion depth for cloning fields and properties

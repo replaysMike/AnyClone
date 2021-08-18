@@ -49,7 +49,7 @@ namespace AnyClone
         /// <param name="path">The current path being traversed</param>
         /// <param name="ignorePropertiesOrPaths">A list of properties or paths to ignore</param>
         /// <returns></returns>
-        private object InspectAndCopy(object sourceObject, object destinationObject, Type destinationObjectType, int currentDepth, int maxDepth, CloneConfiguration configuration, IDictionary<int, object> objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
+        private object InspectAndCopy(object sourceObject, object destinationObject, Type destinationObjectType, int currentDepth, int maxDepth, CloneConfiguration configuration, ObjectTreeReferenceTracker objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
         {
             if (IgnoreObjectName(null, path, configuration, ignorePropertiesOrPaths))
                 return null;
@@ -59,7 +59,7 @@ namespace AnyClone
 
             // ensure we don't go too deep if specified
             if (maxDepth > 0 && currentDepth >= maxDepth)
-                throw new CloneException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.UseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}. Check the Path in the exception for diagnosing the cause.", path);
+                throw new CloneException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.AllowUseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}. Check the Path in the exception for diagnosing the cause.", path);
 
             var type = sourceObject.GetType();
             ExtendedType typeSupport;
@@ -119,28 +119,27 @@ namespace AnyClone
             // increment the current recursion depth
             currentDepth++;
 
-            // construct a hashtable of objects we have already inspected (simple recursion loop preventer)
-            // we use this hashcode method as it does not use any custom hashcode handlers the object might implement
+            // construct a hashtable of objects we have already inspected (recursion loop preventer)
             if (!typeSupport.IsValueType)
             {
-                var implementationHashCode = sourceObject.GetHashCode();
-                var systemGeneratedHashCode = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(sourceObject);
-                var useHashCode = configuration.UseCustomHashCodes ? implementationHashCode : systemGeneratedHashCode;
-                if (objectTree.ContainsKey(useHashCode))
-                {
-                    if (objectTree[useHashCode].GetType() == type)
-                        return objectTree[useHashCode];
-
-                }
+                if (!objectTree.Contains(sourceObject))
+                    objectTree.Add(sourceObject);
                 else
                 {
-                    // ensure we can refer back to the reference for this object
-                    objectTree.Add(useHashCode, newObject);
+                    // object has already been traversed
+                    return sourceObject;
                 }
             }
 
+            // clone using IClonable interface if exists
+            if (configuration.AllowIClonableImplementations && typeSupport.Interfaces.Contains(typeof(ICloneable)))
+            {
+                var iClonable = sourceObject as ICloneable;
+                return iClonable?.Clone();
+            }
+
             // clone a dictionary's key/values
-            if (typeSupport.IsDictionary && typeSupport.IsGeneric)
+            else if (typeSupport.IsDictionary && typeSupport.IsGeneric)
             {
                 var genericType = typeSupport.Type.GetGenericArguments().ToList();
                 Type[] typeArgs = { genericType[0], genericType[1] };
@@ -148,7 +147,7 @@ namespace AnyClone
                 var listType = typeof(Dictionary<,>).MakeGenericType(typeArgs);
                 var newDictionary = Activator.CreateInstance(listType) as IDictionary;
                 newObject = newDictionary ?? throw new NullReferenceException($"{nameof(newDictionary)} cannot be null");
-                var iDictionary = (IDictionary)sourceObject;
+                var iDictionary = sourceObject as IDictionary;
                 var success = false;
                 var retryCount = 0;
                 while (!success && retryCount < 10)
@@ -169,6 +168,35 @@ namespace AnyClone
                         success = false;
                         retryCount++;
                         newDictionary.Clear();
+                    }
+                }
+                return newObject;
+            }
+            else if (typeSupport.IsHashtable && !typeSupport.IsGeneric)
+            {
+                var newHashtable = new Hashtable();
+                newObject = newHashtable ?? throw new NullReferenceException($"{nameof(newHashtable)} cannot be null");
+                var hashtable = (Hashtable)sourceObject;
+                var success = false;
+                var retryCount = 0;
+                while (!success && retryCount < 10)
+                {
+                    try
+                    {
+                        foreach (DictionaryEntry item in hashtable)
+                        {
+                            var key = InspectAndCopy(item.Key, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            var value = InspectAndCopy(item.Value, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            newHashtable.Add(key, value);
+                        }
+                        success = true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // if the collection was modified during enumeration, stop re-initialize and retry
+                        success = false;
+                        retryCount++;
+                        newHashtable.Clear();
                     }
                 }
                 return newObject;
