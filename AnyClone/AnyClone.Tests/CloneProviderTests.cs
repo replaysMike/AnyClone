@@ -431,5 +431,13 @@ namespace AnyClone.Tests
             var cloned = original.Clone();
             Assert.IsNotNull(cloned);
         }
+
+        [Test]
+        public void ShouldNot_Clone_Constants()
+        {
+            var original = new ConstantObject();
+            var cloned = original.Clone();
+            Assert.IsNotNull(cloned);
+        }
     }
 }

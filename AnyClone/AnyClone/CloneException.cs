@@ -26,6 +26,16 @@ namespace AnyClone
         /// Create a new cloning exception
         /// </summary>
         /// <param name="message"></param>
+        /// <param name="ex">The inner exception</param>
+        public CloneException(string message, Exception ex) : base(message, ex)
+        {
+            
+        }
+
+        /// <summary>
+        /// Create a new cloning exception
+        /// </summary>
+        /// <param name="message"></param>
         /// <param name="path">The current recursion path</param>
         public CloneException(string message, string path) : base(message)
         {

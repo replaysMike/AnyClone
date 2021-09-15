@@ -183,6 +183,8 @@ namespace AnyClone
                         newDictionary.Clear();
                     }
                 }
+                if (!success)
+                    throw new CloneException($"Error cloning Dictionary<,> at path '{path}'. Ensure the object is not modified while cloning data utilizing thread-safe access.");
                 return newObject;
             }
             else if (typeSupport.IsHashtable && !typeSupport.IsGeneric)
@@ -212,6 +214,8 @@ namespace AnyClone
                         newHashtable.Clear();
                     }
                 }
+                if (!success)
+                    throw new CloneException($"Error cloning Hashtable at path '{path}'. Ensure the object is not modified while cloning data utilizing thread-safe access.");
                 return newObject;
             }
             else if (typeSupport.IsEnumerable && !typeSupport.IsArray)
@@ -279,6 +283,8 @@ namespace AnyClone
                             clearMethod?.Invoke(newObject, null);
                         }
                     }
+                    if (!success)
+                        throw new CloneException($"Error cloning IEnumerable at path '{path}'. Ensure the object is not modified while cloning data utilizing thread-safe access.");
                 }
 
                 return newObject;
@@ -294,45 +300,59 @@ namespace AnyClone
                 if (typeSupport.ElementType.IsPrimitive)
                 {
                     var bytesPerValue = GetBytesPerValue(typeSupport.ElementType);
-                    Buffer.BlockCopy(sourceArray, 0, newArray, 0, sourceArray.Length * bytesPerValue);
+                    try
+                    {
+                        Buffer.BlockCopy(sourceArray, 0, newArray, 0, sourceArray.Length * bytesPerValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new CloneException($"Error block copying array at path '{path}'", ex);
+                    }
                 }
                 else
                 {
-                    // copy each array element and clone the value
-                    var arrayRank = newArray.Rank;
-                    var arrayDimensions = new List<int>();
-                    for (var dimension = 0; dimension < arrayRank; dimension++)
-                        arrayDimensions.Add(newArray.GetLength(dimension));
-                    var flatRowIndex = 0;
-                    foreach (var row in sourceArray)
+                    try
                     {
-                        var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
-                        // performance optimization, skip dimensional processing if it's a 1d array
-                        if (arrayRank > 1)
+                        // copy each array element and clone the value
+                        var arrayRank = newArray.Rank;
+                        var arrayDimensions = new List<int>();
+                        for (var dimension = 0; dimension < arrayRank; dimension++)
+                            arrayDimensions.Add(newArray.GetLength(dimension));
+                        var flatRowIndex = 0;
+                        foreach (var row in sourceArray)
                         {
-                            // this is an optimized multi-dimensional array reconstruction
-                            // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
-                            var indices = new List<int>();
-                            for (var r = 1; r <= arrayRank; r++)
+                            var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                            // performance optimization, skip dimensional processing if it's a 1d array
+                            if (arrayRank > 1)
                             {
-                                var multi = 1;
-                                for (var p = 1; p < r; p++)
+                                // this is an optimized multi-dimensional array reconstruction
+                                // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
+                                var indices = new List<int>();
+                                for (var r = 1; r <= arrayRank; r++)
                                 {
-                                    multi *= arrayDimensions[arrayRank - p];
+                                    var multi = 1;
+                                    for (var p = 1; p < r; p++)
+                                    {
+                                        multi *= arrayDimensions[arrayRank - p];
+                                    }
+                                    var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
+                                    indices.Add(b);
                                 }
-                                var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
-                                indices.Add(b);
+                                indices.Reverse();
+                                // set element of multi-dimensional array
+                                newArray.SetValue(newElement, indices.ToArray());
                             }
-                            indices.Reverse();
-                            // set element of multi-dimensional array
-                            newArray.SetValue(newElement, indices.ToArray());
+                            else
+                            {
+                                // set element of 1d array
+                                newArray.SetValue(newElement, flatRowIndex);
+                            }
+                            flatRowIndex++;
                         }
-                        else
-                        {
-                            // set element of 1d array
-                            newArray.SetValue(newElement, flatRowIndex);
-                        }
-                        flatRowIndex++;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new CloneException($"Error cloning array elements at path '{path}'", ex);
                     }
                 }
                 return newArray;
@@ -341,13 +361,18 @@ namespace AnyClone
             if (typeSupport.IsExpression)
             {
                 // utilize MemberwiseClone for expressions
-                var newExpression = _memberwiseCloneMethod.Invoke(sourceObject, null);
-                return newExpression;
+                try
+                {
+                    var newExpression = _memberwiseCloneMethod.Invoke(sourceObject, null);
+                    return newExpression;
+                }
+                catch (Exception ex)
+                {
+                    throw new CloneException($"Error cloning expression with type '{typeSupport.FullName}' at path '{path}'", ex);
+                }
             }
 
-            //var fields = sourceObject.GetFields(FieldOptions.AllWritable);
-            var fields = typeSupport.Fields;
-
+            var fields = typeSupport.Fields.Where(x => !x.IsConstant);
             var rootPath = path;
             var localPath = string.Empty;
             // clone and recurse fields
@@ -369,9 +394,16 @@ namespace AnyClone
                 // make use of IL to get around this limitation
                 if (field.FieldInfo.IsInitOnly && configuration.AllowCloningOfReadOnlyEntities)
                 {
-                    var updateFieldValue = sourceObject.GetFieldValue(field);
-                    var updater = GetWriterForField(field);
-                    updater(ref newObject, updateFieldValue);
+                    try
+                    {
+                        var updateFieldValue = sourceObject.GetFieldValue(field);
+                        var updater = GetWriterForField(field);
+                        updater(ref newObject, updateFieldValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new CloneException($"Failed to set field value named '{field.Name}' at path '{path}' using IL DynamicMethod", ex);
+                    }
                     continue;
                 }
 #endif
@@ -388,13 +420,13 @@ namespace AnyClone
                 {
                     if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
                     {
-                        SetFieldValue(newObject, destinationField, fieldValue);
+                        SetFieldValue(newObject, destinationField, fieldValue, localPath);
                     }
                     else if (fieldValue != null)
                     {
                         var clonedFieldValue = InspectAndCopy(fieldValue, null, null, currentDepth, maxDepth,
                             configuration, objectTree, localPath, ignorePropertiesOrPaths);
-                        SetFieldValue(newObject, destinationField, clonedFieldValue);
+                        SetFieldValue(newObject, destinationField, clonedFieldValue, localPath);
                     }
                 }
             }
@@ -402,14 +434,21 @@ namespace AnyClone
             return newObject;
         }
 
-        private void SetFieldValue(object newObject, FieldInfo fieldInfo, object value)
+        private void SetFieldValue(object newObject, FieldInfo fieldInfo, object value, string path)
         {
-            // use IL to set values
-            //var updater = GetWriterForField(fieldInfo);
-            //updater(ref newObject, value);
+            try
+            {
+                // use IL to set values
+                //var updater = GetWriterForField(fieldInfo);
+                //updater(ref newObject, value);
 
-            // use reflection to set values
-            newObject.SetFieldValue(fieldInfo, value);
+                // use reflection to set values
+                newObject.SetFieldValue(fieldInfo, value);
+            }
+            catch (Exception ex)
+            {
+                throw new CloneException($"Error setting value of field named '{fieldInfo.Name}' at path '{path}' using reflection", ex);
+            }
         }
 
         /// <summary>
