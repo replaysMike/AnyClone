@@ -67,7 +67,7 @@ namespace AnyClone
 
             // ensure we don't go too deep if specified
             if (maxDepth > 0 && currentDepth >= maxDepth)
-                throw new CloneException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.AllowUseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}. Check the Path in the exception for diagnosing the cause.", path);
+                throw new CloneException($"The maximum clone recursion depth has exceeded maxDepth of '{maxDepth}'. Try setting the configuration option {nameof(CloneConfiguration.AllowUseCustomHashCodes)} to true or increase the {nameof(CloneConfiguration.MaxDepth)}. The last path traversed was '{path}'.", path);
 
             var type = sourceObject.GetType();
             ExtendedType typeSupport;
@@ -311,48 +311,41 @@ namespace AnyClone
                 }
                 else
                 {
-                    try
+                    // copy each array element and clone the value
+                    var arrayRank = newArray.Rank;
+                    var arrayDimensions = new List<int>();
+                    for (var dimension = 0; dimension < arrayRank; dimension++)
+                        arrayDimensions.Add(newArray.GetLength(dimension));
+                    var flatRowIndex = 0;
+                    foreach (var row in sourceArray)
                     {
-                        // copy each array element and clone the value
-                        var arrayRank = newArray.Rank;
-                        var arrayDimensions = new List<int>();
-                        for (var dimension = 0; dimension < arrayRank; dimension++)
-                            arrayDimensions.Add(newArray.GetLength(dimension));
-                        var flatRowIndex = 0;
-                        foreach (var row in sourceArray)
+                        var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                        // performance optimization, skip dimensional processing if it's a 1d array
+                        if (arrayRank > 1)
                         {
-                            var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
-                            // performance optimization, skip dimensional processing if it's a 1d array
-                            if (arrayRank > 1)
+                            // this is an optimized multi-dimensional array reconstruction
+                            // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
+                            var indices = new List<int>();
+                            for (var r = 1; r <= arrayRank; r++)
                             {
-                                // this is an optimized multi-dimensional array reconstruction
-                                // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
-                                var indices = new List<int>();
-                                for (var r = 1; r <= arrayRank; r++)
+                                var multi = 1;
+                                for (var p = 1; p < r; p++)
                                 {
-                                    var multi = 1;
-                                    for (var p = 1; p < r; p++)
-                                    {
-                                        multi *= arrayDimensions[arrayRank - p];
-                                    }
-                                    var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
-                                    indices.Add(b);
+                                    multi *= arrayDimensions[arrayRank - p];
                                 }
-                                indices.Reverse();
-                                // set element of multi-dimensional array
-                                newArray.SetValue(newElement, indices.ToArray());
+                                var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
+                                indices.Add(b);
                             }
-                            else
-                            {
-                                // set element of 1d array
-                                newArray.SetValue(newElement, flatRowIndex);
-                            }
-                            flatRowIndex++;
+                            indices.Reverse();
+                            // set element of multi-dimensional array
+                            newArray.SetValue(newElement, indices.ToArray());
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new CloneException($"Error cloning array elements at path '{path}'", ex);
+                        else
+                        {
+                            // set element of 1d array
+                            newArray.SetValue(newElement, flatRowIndex);
+                        }
+                        flatRowIndex++;
                     }
                 }
                 return newArray;
@@ -372,7 +365,7 @@ namespace AnyClone
                 }
             }
 
-            var fields = typeSupport.Fields.Where(x => !x.IsConstant);
+            var fields = typeSupport.Fields.Where(x => !x.IsConstant && !x.IsStatic);
             var rootPath = path;
             var localPath = string.Empty;
             // clone and recurse fields
