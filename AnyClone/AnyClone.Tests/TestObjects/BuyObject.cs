@@ -1,4 +1,4 @@
-﻿#if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER
+﻿#if NET45_OR_GREATER || NETSTANDARD1_0_OR_GREATER || NET5_0_OR_GREATER
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -126,9 +126,6 @@ namespace AnyClone.Tests.TestObjects
 
         [NotMapped]
         public override IEnumerable<int> CategoryIds => ProgramAssignments.Select(x => 0);
-
-        [NotMapped]
-        public override IEnumerable<object> Notes => Notes;
 
         public override IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

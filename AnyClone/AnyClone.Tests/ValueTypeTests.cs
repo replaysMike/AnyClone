@@ -1,4 +1,5 @@
-﻿using AnyClone;
+﻿using System;
+using AnyClone;
 using NUnit.Framework;
 
 namespace AnyClone.Tests
@@ -54,8 +55,26 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_ArrayOfInts()
         {
-            var original = new [] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-            var cloned = original.Clone();
+            var original = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+            var cloned = original.Clone<int[]>();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_ArrayOfStrings()
+        {
+            var original = new[] { "line1", "line2", "line3", "line4", "line5" };
+            var cloned = original.Clone<string[]>();
+
+            Assert.AreEqual(original, cloned);
+        }
+
+        [Test]
+        public void Should_Clone_ArrayOfEnum()
+        {
+            var original = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday };
+            var cloned = original.Clone<DayOfWeek[]>();
 
             Assert.AreEqual(original, cloned);
         }
@@ -63,14 +82,14 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_2dMultidimensionalArrayOfInts()
         {
-            var original = new [,] {
+            var original = new[,] {
                 { 1, 2 },
                 { 3, 4 },
                 { 5, 6 },
                 { 7, 8 }
             };
 
-            var cloned = original.Clone();
+            var cloned = original.Clone<int[,]>();
 
             Assert.AreEqual(original, cloned);
         }
@@ -78,14 +97,14 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_3dMultidimensionalArrayOfInts()
         {
-            var original = new [,,] {
+            var original = new[, ,] {
                 // row 1
                 { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 } },
                 // row 2
                 { { 10, 11, 12 }, { 13, 14, 15 }, { 16, 17, 18 } }
             };
 
-            var cloned = original.Clone();
+            var cloned = original.Clone<int[,,]>();
 
             Assert.AreEqual(original, cloned);
         }
@@ -93,14 +112,14 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_4dMultidimensionalArrayOfInts()
         {
-            var original = new[,,,] {
+            var original = new[, , ,] {
                 // row 1
                 { { { 1, 2 }, { 3, 4 } }, { { 5, 6 }, { 7, 8 } } },
                 // row 2
                 { { { 9, 10 }, { 11, 12 } }, { { 13, 14 }, { 15, 16 } } },
             };
 
-            var cloned = original.Clone();
+            var cloned = original.Clone<int[,,,]>();
 
             Assert.AreEqual(original, cloned);
         }
@@ -108,14 +127,14 @@ namespace AnyClone.Tests
         [Test]
         public void Should_Clone_JaggedArrayOfInts()
         {
-            var original = new [] {
+            var original = new[] {
                 new [] { 1, 2 },
                 new [] { 3, 4 },
                 new [] { 5, 6 },
                 new [] { 7, 8 }
             };
 
-            var cloned = original.Clone();
+            var cloned = original.Clone<int[][]>();
 
             Assert.AreEqual(original, cloned);
         }

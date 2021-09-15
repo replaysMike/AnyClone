@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.1;net40;net45;net46;net461;net462;net47;net48</TargetFrameworks>
+		<TargetFrameworks>netstandard2.1;net40;net45;net46;net461;net462;net47;net48;net5</TargetFrameworks>
 		<Authors>Michael Brown</Authors>
 		<Company>Refactor Software</Company>
 		<Description>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</Description>
@@ -25,7 +25,7 @@
 		<DefineConstants>FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
 	</PropertyGroup>
 
-	<PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='net48'">
+	<PropertyGroup Condition="'$(TargetFramework)'=='netstandard2.0' OR '$(TargetFramework)'=='net47' OR '$(TargetFramework)'=='net48' OR '$(TargetFramework)'=='net5'">
 		<DefineConstants>FEATURE_CUSTOM_VALUETUPLE;FEATURE_CUSTOM_ATTRIBUTES;FEATURE_CUSTOM_TYPEINFO;FEATURE_GETMETHOD;FEATURE_SETVALUE;FEATURE_TASK;FEATURE_ASSEMBLYBUILDER</DefineConstants>
 	</PropertyGroup>
 
@@ -39,7 +39,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.18.2" PrivateAssets="all" />
-		<PackageReference Include="TypeSupport" Version="1.1.11" PrivateAssets="all" />
+		<PackageReference Include="TypeSupport" Version="1.1.12" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="all" />
 	</ItemGroup>
 

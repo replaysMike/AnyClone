@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFrameworks>netcoreapp3.1;net40;net45;net46;net461;net462;net47;net48;net5</TargetFrameworks>
@@ -40,7 +40,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="TypeSupport" Version="1.1.11" />
+		<PackageReference Include="TypeSupport" Version="1.1.12" />
 	</ItemGroup>
 
 	<ItemGroup>

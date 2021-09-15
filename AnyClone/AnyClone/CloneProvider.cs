@@ -22,6 +22,11 @@ namespace AnyClone
         private readonly ObjectFactory _objectFactory;
         private MethodInfo _memberwiseCloneMethod = typeof(object)
             .GetMethod("MemberwiseClone", BindingFlags.NonPublic | BindingFlags.Instance);
+        private const TypeSupportOptions DefaultExtendedTypeOptions = TypeSupportOptions.Fields | TypeSupportOptions.Collections | TypeSupportOptions.Generics | TypeSupportOptions.Constructors | TypeSupportOptions.Caching;
+
+        // maintain a static cache of IL dynamic methods for a given type/field pair
+        private static readonly Dictionary<ILCacheKey, _memberUpdaterByRef> _memberUpdaterCache = new Dictionary<ILCacheKey, _memberUpdaterByRef>();
+        private bool? _hasIgnoreConfiguration;
 
         /// <summary>
         /// Cloning error event
@@ -51,7 +56,10 @@ namespace AnyClone
         /// <returns></returns>
         private object InspectAndCopy(object sourceObject, object destinationObject, Type destinationObjectType, int currentDepth, int maxDepth, CloneConfiguration configuration, ObjectTreeReferenceTracker objectTree, string path, ICollection<string> ignorePropertiesOrPaths)
         {
-            if (IgnoreObjectName(null, path, configuration, ignorePropertiesOrPaths))
+            if (_hasIgnoreConfiguration == null)
+                _hasIgnoreConfiguration = HasIgnoreConfiguration(configuration, ignorePropertiesOrPaths);
+
+            if (_hasIgnoreConfiguration.Value && IgnoreObjectName(null, path, configuration, ignorePropertiesOrPaths))
                 return null;
 
             if (sourceObject == null)
@@ -65,14 +73,19 @@ namespace AnyClone
             ExtendedType typeSupport;
             try
             {
-                typeSupport = type.GetExtendedType();
+                typeSupport = type.GetExtendedType(DefaultExtendedTypeOptions);
             }
             // certain attributes such as .net remoting SoapTypeAttribute can cause issues trying to inspect. Possibly a framework bug with reflection
             catch (CustomAttributeFormatException)
             {
                 return sourceObject;
             }
-            var destinationTypeSupport = destinationObjectType?.GetExtendedType() ?? typeSupport;
+
+            ExtendedType destinationTypeSupport;
+            if (destinationObjectType == null || destinationObjectType == type)
+                destinationTypeSupport = typeSupport;
+            else
+                destinationTypeSupport = destinationObjectType.GetExtendedType(DefaultExtendedTypeOptions);
 
             // always return the original value on value types
             if (typeSupport.IsValueType)
@@ -81,7 +94,7 @@ namespace AnyClone
             }
 
             // drop any objects we are ignoring by attribute
-            if (typeSupport.Attributes.Any(x => configuration.IgnorePropertiesWithAttributes.Contains(x.Name)))
+            if (_hasIgnoreConfiguration.Value && typeSupport.Attributes.Any(x => configuration.IgnorePropertiesWithAttributes.Contains(x.Name)))
                 return null;
 
             // for delegate types, copy them by reference rather than returning null
@@ -100,7 +113,7 @@ namespace AnyClone
                 var arrayDimensions = new List<int>();
                 for (var dimension = 0; dimension < arrayRank; dimension++)
                     arrayDimensions.Add(sourceArray.GetLength(dimension));
-                newObject = _objectFactory.CreateEmptyObject(destinationTypeSupport.Type, default(TypeRegistry), arrayDimensions.ToArray());
+                newObject = _objectFactory.CreateEmptyObject(destinationTypeSupport, default(TypeRegistry), arrayDimensions.ToArray());
             }
             else if (typeSupport.Type == typeof(string))
             {
@@ -110,7 +123,7 @@ namespace AnyClone
             }
             else
             {
-                newObject = destinationObject ?? _objectFactory.CreateEmptyObject(destinationTypeSupport.Type);
+                newObject = destinationObject ?? _objectFactory.CreateEmptyObject(destinationTypeSupport);
             }
 
             if (newObject == null)
@@ -276,40 +289,51 @@ namespace AnyClone
             {
                 var sourceArray = sourceObject as Array;
                 var newArray = newObject as Array;
-                var arrayRank = newArray.Rank;
-                var arrayDimensions = new List<int>();
-                for (var dimension = 0; dimension < arrayRank; dimension++)
-                    arrayDimensions.Add(newArray.GetLength(dimension));
-                var flatRowIndex = 0;
-                foreach (var row in sourceArray)
+
+                // performance optimization, value typed primitive arrays can be block copied
+                if (typeSupport.ElementType.IsPrimitive)
                 {
-                    var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
-                    // performance optimization, skip dimensional processing if it's a 1d array
-                    if (arrayRank > 1)
+                    var bytesPerValue = GetBytesPerValue(typeSupport.ElementType);
+                    Buffer.BlockCopy(sourceArray, 0, newArray, 0, sourceArray.Length * bytesPerValue);
+                }
+                else
+                {
+                    // copy each array element and clone the value
+                    var arrayRank = newArray.Rank;
+                    var arrayDimensions = new List<int>();
+                    for (var dimension = 0; dimension < arrayRank; dimension++)
+                        arrayDimensions.Add(newArray.GetLength(dimension));
+                    var flatRowIndex = 0;
+                    foreach (var row in sourceArray)
                     {
-                        // this is an optimized multi-dimensional array reconstruction
-                        // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
-                        var indices = new List<int>();
-                        for (var r = 1; r <= arrayRank; r++)
+                        var newElement = InspectAndCopy(row, null, null, currentDepth, maxDepth, configuration, objectTree, path, ignorePropertiesOrPaths);
+                        // performance optimization, skip dimensional processing if it's a 1d array
+                        if (arrayRank > 1)
                         {
-                            var multi = 1;
-                            for (var p = 1; p < r; p++)
+                            // this is an optimized multi-dimensional array reconstruction
+                            // based on the formula: indices.Add((i / (arrayDimensions[arrayRank - 1] * arrayDimensions[arrayRank - 2] * arrayDimensions[arrayRank - 3] * arrayDimensions[arrayRank - 4] * arrayDimensions[arrayRank - 5])) % arrayDimensions[arrayRank - 6]);
+                            var indices = new List<int>();
+                            for (var r = 1; r <= arrayRank; r++)
                             {
-                                multi *= arrayDimensions[arrayRank - p];
+                                var multi = 1;
+                                for (var p = 1; p < r; p++)
+                                {
+                                    multi *= arrayDimensions[arrayRank - p];
+                                }
+                                var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
+                                indices.Add(b);
                             }
-                            var b = (flatRowIndex / multi) % arrayDimensions[arrayRank - r];
-                            indices.Add(b);
+                            indices.Reverse();
+                            // set element of multi-dimensional array
+                            newArray.SetValue(newElement, indices.ToArray());
                         }
-                        indices.Reverse();
-                        // set element of multi-dimensional array
-                        newArray.SetValue(newElement, indices.ToArray());
+                        else
+                        {
+                            // set element of 1d array
+                            newArray.SetValue(newElement, flatRowIndex);
+                        }
+                        flatRowIndex++;
                     }
-                    else
-                    {
-                        // set element of 1d array
-                        newArray.SetValue(newElement, flatRowIndex);
-                    }
-                    flatRowIndex++;
                 }
                 return newArray;
             }
@@ -321,7 +345,8 @@ namespace AnyClone
                 return newExpression;
             }
 
-            var fields = sourceObject.GetFields(FieldOptions.AllWritable);
+            //var fields = sourceObject.GetFields(FieldOptions.AllWritable);
+            var fields = typeSupport.Fields;
 
             var rootPath = path;
             var localPath = string.Empty;
@@ -329,18 +354,23 @@ namespace AnyClone
             foreach (var field in fields)
             {
                 localPath = $"{rootPath}.{field.Name}";
-                if (IgnoreObjectName(field.Name, localPath, configuration, ignorePropertiesOrPaths, field.CustomAttributes))
-                    continue;
-                // also check the property for ignore, if this is a auto-backing property
-                if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", configuration, ignorePropertiesOrPaths, field.BackedProperty.CustomAttributes))
-                    continue;
+                // optimization to disable ignores by attribute if configured
+                //System.Diagnostics.Debug.WriteLine($"Copying {localPath}");
+                if (_hasIgnoreConfiguration.Value)
+                {
+                    if (IgnoreObjectName(field.Name, localPath, configuration, ignorePropertiesOrPaths, configuration.IgnorePropertiesWithAttributes.Count > 0 ? field.CustomAttributes : null))
+                        continue;
+                    // also check the property for ignore, if this is a auto-backing property
+                    if (field.BackedProperty != null && IgnoreObjectName(field.BackedProperty.Name, $"{rootPath}.{field.BackedPropertyName}", configuration, ignorePropertiesOrPaths, configuration.IgnorePropertiesWithAttributes.Count > 0 ? field.BackedProperty.CustomAttributes : null))
+                        continue;
+                }
 #if FEATURE_DISABLE_SET_INITONLY
                 // we can't duplicate init-only fields since .net core 3.0+
                 // make use of IL to get around this limitation
                 if (field.FieldInfo.IsInitOnly && configuration.AllowCloningOfReadOnlyEntities)
                 {
-                    var updater = GetWriterForField(field);
                     var updateFieldValue = sourceObject.GetFieldValue(field);
+                    var updater = GetWriterForField(field);
                     updater(ref newObject, updateFieldValue);
                     continue;
                 }
@@ -357,17 +387,29 @@ namespace AnyClone
                 if (destinationField != null && destinationField.FieldType == field.FieldInfo.FieldType)
                 {
                     if (fieldTypeSupport.IsValueType || fieldTypeSupport.IsImmutable)
-                        newObject.SetFieldValue(destinationField, fieldValue);
+                    {
+                        SetFieldValue(newObject, destinationField, fieldValue);
+                    }
                     else if (fieldValue != null)
                     {
                         var clonedFieldValue = InspectAndCopy(fieldValue, null, null, currentDepth, maxDepth,
                             configuration, objectTree, localPath, ignorePropertiesOrPaths);
-                        newObject.SetFieldValue(destinationField, clonedFieldValue);
+                        SetFieldValue(newObject, destinationField, clonedFieldValue);
                     }
                 }
             }
 
             return newObject;
+        }
+
+        private void SetFieldValue(object newObject, FieldInfo fieldInfo, object value)
+        {
+            // use IL to set values
+            //var updater = GetWriterForField(fieldInfo);
+            //updater(ref newObject, value);
+
+            // use reflection to set values
+            newObject.SetFieldValue(fieldInfo, value);
         }
 
         /// <summary>
@@ -380,8 +422,15 @@ namespace AnyClone
             // Partial credit to https://www.productiverage.com/trying-to-set-a-readonly-autoproperty-value-externally-plus-a-little-benchmarkdotnet
             // dynamically generate a new method that will emit IL to set a field value
             var type = field.DeclaringType;
+            var methodName = $"Set{field.Name}";
+            var cacheKey = new ILCacheKey(type, methodName);
+            if (_memberUpdaterCache.ContainsKey(cacheKey))
+            {
+                return _memberUpdaterCache[cacheKey];
+            }
+
             var dynamicMethod = new DynamicMethod(
-                $"Set{field.Name}",
+                methodName,
                 typeof(void),
                 new Type[] { typeof(object).MakeByRefType(), typeof(object) },
                 type.Module,
@@ -411,7 +460,24 @@ namespace AnyClone
 
 
             // create a delegate matching the parameter types
-            return (_memberUpdaterByRef)dynamicMethod.CreateDelegate(typeof(_memberUpdaterByRef));
+            var memberUpdater = (_memberUpdaterByRef)dynamicMethod.CreateDelegate(typeof(_memberUpdaterByRef));
+
+            //System.Diagnostics.Debug.WriteLine($"Created writer for {type.Name} => {methodName}");
+            _memberUpdaterCache.Add(cacheKey, memberUpdater);
+            return memberUpdater;
+        }
+
+        /// <summary>
+        /// Returns true if an ignore configuration is configured
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="ignorePropertiesOrPaths"></param>
+        /// <returns></returns>
+        private bool HasIgnoreConfiguration(CloneConfiguration configuration, ICollection<string> ignorePropertiesOrPaths)
+        {
+            if (configuration.IgnorePropertiesWithAttributes.Count == 0 && (ignorePropertiesOrPaths == null || ignorePropertiesOrPaths.Count == 0))
+                return false;
+            return true;
         }
 
         /// <summary>
@@ -461,6 +527,33 @@ namespace AnyClone
                 ignorePropertiesList.Add(name);
             }
             return ignorePropertiesList;
+        }
+
+        private static int GetBytesPerValue(Type type)
+        {
+            // this is more performant than a switch
+            if (type == typeof(bool))
+                return sizeof(bool);
+            if (type == typeof(char))
+                return sizeof(char);
+            if (type == typeof(byte) || type == typeof(sbyte))
+                return sizeof(byte);
+            else if (type == typeof(short) || type == typeof(ushort))
+                return sizeof(short);
+            else if (type == typeof(int) || type == typeof(uint))
+                return sizeof(int);
+            else if (type == typeof(nint) || type == typeof(nuint))
+                return sizeof(int); // varies per platform, use int
+            else if (type == typeof(long) || type == typeof(ulong))
+                return sizeof(long);
+            else if (type == typeof(float))
+                return sizeof(float);
+            else if (type == typeof(double))
+                return sizeof(double);
+            else if (type == typeof(decimal))
+                return sizeof(decimal);
+
+            throw new NotSupportedException($"Type {type} is not supported.");
         }
     }
 }

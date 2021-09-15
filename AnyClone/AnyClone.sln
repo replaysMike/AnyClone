@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnyClone", "AnyClone\AnyClo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnyClone.Tests", "AnyClone.Tests\AnyClone.Tests.csproj", "{BC34CCD6-3AE5-4652-8098-BC60583C6A45}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AnyClone.PerformanceTests", "AnyClone.PerformanceTests\AnyClone.PerformanceTests.csproj", "{B7C98CE9-CD51-4A70-B50A-2975FC720F70}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{BC34CCD6-3AE5-4652-8098-BC60583C6A45}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BC34CCD6-3AE5-4652-8098-BC60583C6A45}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BC34CCD6-3AE5-4652-8098-BC60583C6A45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7C98CE9-CD51-4A70-B50A-2975FC720F70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7C98CE9-CD51-4A70-B50A-2975FC720F70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7C98CE9-CD51-4A70-B50A-2975FC720F70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7C98CE9-CD51-4A70-B50A-2975FC720F70}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
