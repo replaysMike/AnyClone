@@ -10,7 +10,8 @@
 		<PackageTags>deep-clone copy reflection IL refactor michael brown</PackageTags>
 		<PackageReleaseNotes>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</PackageReleaseNotes>
 		<Version>1.0.6</Version>
-		<PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<IncludeSymbols>true</IncludeSymbols>
