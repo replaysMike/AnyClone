@@ -11,7 +11,6 @@
 		<PackageReleaseNotes>Deep clone or copy any complex object without the hassle of serialization, decoration or custom mappings.</PackageReleaseNotes>
 		<Version>1.0.6</Version>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageLicenseUrl>https://licenses.nuget.org/MIT</PackageLicenseUrl>
     <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
